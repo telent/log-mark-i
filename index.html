@@ -22,7 +22,7 @@
     stroke: #fff;
 }
 
-  .focus circle {
+.dot.focus {
   fill: none;
   stroke: steelblue;
 }
@@ -41,10 +41,10 @@
   , width = window.innerWidth - margin.left - margin.right // Use the window's width
   , height = window.innerHeight - margin.top - margin.bottom; // Use the window's height
 
+  var parseTime = d3.isoParse;
+
   // 5. X scale will use the index of our data
-  var xScale = d3.scaleLinear()
-      .domain([(new Date("2020-05-10 00:00:00+00:00")).getTime(),
-	       (new Date("2020-06-06 08:06:42+01:00")).getTime()])
+  var xScale = d3.scaleTime()
       .range([0, width]); // output
 
   // 6. Y scale will use the randomly generate number
@@ -58,7 +58,6 @@
       .y(function(d) { return yScale(d.y); }) // set the y values for the line generator
       .curve(d3.curveMonotoneX) // apply smoothing to the line
 
-  var dataset = d3.json("/weights.json");
 
 // 1. Add the SVG to the page and employ #2
 var svg = d3.select("body").append("svg")
@@ -67,73 +66,47 @@ var svg = d3.select("body").append("svg")
     .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-// 3. Call the x axis in a group tag
-svg.append("g")
-    .attr("class", "x axis")
-    .attr("transform", "translate(0," + height + ")")
-    .call(d3.axisBottom(xScale)); // Create an axis component with d3.axisBottom
 
-// 4. Call the y axis in a group tag
-svg.append("g")
-    .attr("class", "y axis")
-    .call(d3.axisLeft(yScale)); // Create an axis component with d3.axisLeft
+  d3.json("/weights.json").then(function(data) {
+      data.forEach(function(d) {
+	  d.date = parseTime(d.date);
+	  d.weight = d.weight/1000.0;
+      });
+      xScale.domain(d3.extent(data, function(d) { return d.date; }));
+      yScale.domain(d3.extent(data, function(d) { return d.weight; }));
+      svg.append("g")
+	  .attr("class", "x axis")
+	  .attr("transform", "translate(0," + height + ")")
+	  .call(d3.axisBottom(xScale));
 
-  var weightLine = d3.line()
-      .x(function (d) { return xScale((new Date(d.date)).getTime()); })
-      .y(function (d) { return yScale(d.weight/1000.0); })
-      .curve(d3.curveMonotoneX)
+      svg.append("g")
+	  .attr("class", "y axis")
+	  .call(d3.axisLeft(yScale));
 
-// 9. Append the path, bind the data, and call the line generator
-  dataset.then(function(ds) {
-      return svg.append("path")
-	  .datum(ds) // 10. Binds data to the line
+      var weightLine = d3.line()
+	  .x(function (d) { return xScale(d.date); })
+	  .y(function (d) { return yScale(d.weight);} )
+	  .curve(d3.curveMonotoneX)
+
+      svg.append("path")
+	  .datum(data) // 10. Binds data to the line
 	  .attr("class", "line") // Assign a class for styling
 	  .attr("d", weightLine); // 11. Calls the line generator
-  });
 
-// 12. Appends a circle for each datapoint
-  dataset.then(function(ds) {
-      return svg.selectAll(".dot")
-	  .data(ds)
+      svg.selectAll(".dot")
+	  .data(data)
 	  .enter().append("circle") // Uses the enter().append() method
 	  .attr("class", "dot") // Assign a class for styling
-	  .attr("cx", function(d, i) { return xScale(i) })
-	  .attr("cy", function(d) { return yScale(d.y) })
+	  .attr("cx", function(d) { return xScale(d.date) })
+	  .attr("cy", function(d) { return yScale(d.weight) })
 	  .attr("r", 5)
 	  .on("mouseover", function(a, b, c) {
-  	      console.log(a)
-              this.attr('class', 'focus')
+	      d3.select(this).attr({ fill: "black", r: 7})
+  	      console.log(a, this);
 	  })
-	  .on("mouseout", function() {  })
+	  .on("mouseleave", function(a, b, c) {
+              d3.select(this).attr({ fill: "orange", r: 5})
+	  })
   });
-//       .on("mousemove", mousemove);
 
-//   var focus = svg.append("g")
-//       .attr("class", "focus")
-//       .style("display", "none");
-
-//   focus.append("circle")
-//       .attr("r", 4.5);
-
-//   focus.append("text")
-//       .attr("x", 9)
-//       .attr("dy", ".35em");
-
-//   svg.append("rect")
-//       .attr("class", "overlay")
-//       .attr("width", width)
-//       .attr("height", height)
-//       .on("mouseover", function() { focus.style("display", null); })
-//       .on("mouseout", function() { focus.style("display", "none"); })
-//       .on("mousemove", mousemove);
-
-//   function mousemove() {
-//     var x0 = x.invert(d3.mouse(this)[0]),
-//         i = bisectDate(data, x0, 1),
-//         d0 = data[i - 1],
-//         d1 = data[i],
-//         d = x0 - d0.date > d1.date - x0 ? d1 : d0;
-//     focus.attr("transform", "translate(" + x(d.date) + "," + y(d.close) + ")");
-//     focus.select("text").text(d);
-//   }
 </script>

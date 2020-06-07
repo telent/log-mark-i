@@ -10,6 +10,26 @@
     stroke: #ffab00;
     stroke-width: 3;
 }
+.fatLine {
+    fill: none;
+    stroke: #77ab00;
+    stroke-width: 3;
+    opacity: 0.5;
+}
+
+.tooltip {
+    position: absolute;
+    text-align: center;
+    width: 90px;
+    height: 42px;
+    padding: 2px;
+    font: 12px sans-serif;
+    background: lightsteelblue;
+    border: 0px;
+    border-radius: 8px;
+    pointer-events: none;
+}
+
 
 .overlay {
   fill: none;
@@ -42,38 +62,36 @@
   , height = window.innerHeight - margin.top - margin.bottom; // Use the window's height
 
   var parseTime = d3.isoParse;
+  var formatTime = d3.timeFormat("%e %B %H:%m");
 
-  // 5. X scale will use the index of our data
+  var divTooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
   var xScale = d3.scaleTime()
       .range([0, width]); // output
 
-  // 6. Y scale will use the randomly generate number
   var yScale = d3.scaleLinear()
-      .domain([63.8, 65.5]) // input
       .range([height, 0]); // output
 
-  // 7. d3's line generator
-  var line = d3.line()
-      .x(function(d, i) { return xScale(i); }) // set the x values for the line generator
-      .y(function(d) { return yScale(d.y); }) // set the y values for the line generator
-      .curve(d3.curveMonotoneX) // apply smoothing to the line
+  var fatScale = d3.scaleLinear()
+      .range([height, 0]); // output
 
-
-// 1. Add the SVG to the page and employ #2
-var svg = d3.select("body").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
+  var svg = d3.select("body").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
   d3.json("/weights.json").then(function(data) {
       data.forEach(function(d) {
 	  d.date = parseTime(d.date);
 	  d.weight = d.weight/1000.0;
+	  d.fat_free_mass = d.fat_free_mass/1000.0;
       });
       xScale.domain(d3.extent(data, function(d) { return d.date; }));
-      yScale.domain(d3.extent(data, function(d) { return d.weight; }));
+      yScale.domain(d3.extent(data, d => d.weight));
+      fatScale.domain(d3.extent(data, d => d.fat_ratio));
       svg.append("g")
 	  .attr("class", "x axis")
 	  .attr("transform", "translate(0," + height + ")")
@@ -88,10 +106,20 @@ var svg = d3.select("body").append("svg")
 	  .y(function (d) { return yScale(d.weight);} )
 	  .curve(d3.curveMonotoneX)
 
+      var fatLine = d3.line()
+	  .x(function (d) { return xScale(d.date); })
+	  .y(function (d) { return fatScale(d.fat_ratio);} )
+	  .curve(d3.curveMonotoneX)
+
       svg.append("path")
 	  .datum(data) // 10. Binds data to the line
 	  .attr("class", "line") // Assign a class for styling
 	  .attr("d", weightLine); // 11. Calls the line generator
+
+      svg.append("path")
+	  .datum(data)
+	  .attr("class", "fatLine")
+	  .attr("d", fatLine);
 
       svg.selectAll(".dot")
 	  .data(data)
@@ -100,12 +128,19 @@ var svg = d3.select("body").append("svg")
 	  .attr("cx", function(d) { return xScale(d.date) })
 	  .attr("cy", function(d) { return yScale(d.weight) })
 	  .attr("r", 5)
-	  .on("mouseover", function(a, b, c) {
-	      d3.select(this).attr({ fill: "black", r: 7})
-  	      console.log(a, this);
+	  .on("mouseover", function(d) {
+	      divTooltip.transition()
+		  .duration(200)
+		  .style("opacity", 0.7);
+	      divTooltip.html(formatTime(d.date) + "<br/>" +
+			      d.weight + "kg" + "<br/>" +
+			      (d.fat_ratio/1000.0) + "%" )
+		  .style("left", (d3.event.pageX) + "px")
+                  .style("top", (d3.event.pageY - 28) + "px");
+	      d3.select(this).attr("class", "focus");
 	  })
 	  .on("mouseleave", function(a, b, c) {
-              d3.select(this).attr({ fill: "orange", r: 5})
+	      d3.select(this).attr("class", "dot");
 	  })
   });
 

@@ -37,7 +37,6 @@ def withings_auth():
 def get_results(api):
     meas_result = api.measure_get_meas(startdate=arrow.utcnow().shift(days=-21),
                                        enddate=arrow.utcnow())
-    print(meas_result)
     measure_types = [MeasureType.WEIGHT,
                      MeasureType.FAT_FREE_MASS,
                      MeasureType.FAT_RATIO,
@@ -50,7 +49,6 @@ def get_results(api):
         for m in group.measures:
             row[m.type.name.lower()] = m.value # m.unit unused
         out.append(row)
-    print(out)
     return out
 
 
@@ -85,7 +83,6 @@ def withings_callback():
     auth_code = redirected_uri_params["code"]
     global credentials
     credentials = withings_auth().get_credentials(auth_code)
-    print("im in", auth_code, credentials)
     credsfile = open("credentials.pickle", "wb")
     pickle.dump(credentials, credsfile)
     return redirect('/')

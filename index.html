@@ -84,13 +84,27 @@
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
   d3.json("/weights.json").then(function(data) {
-      data.forEach(function(d) {
+      let earlier = null, lambda = 0.50/86400000;
+      data.forEach(function(d, i) {
 	  d.date = parseTime(d.date);
 	  d.weight = d.weight/1000.0;
+	  if(earlier) {
+	      let lag = earlier.date - d.date, // milliseconds
+		  m = Math.exp(-lag*lambda);
+	      earlier.weight = (1-m)*d.weight + (m)*earlier.weight
+	      d.intensity = Math.max(0.2, Math.min(1,lag/86400000.0));
+	  } else {
+	      earlier = { weight: d.weight };
+	      d.intensity = 1;
+	  }
+	  earlier.date = d.date;
+	  d.weight_trend = earlier.weight;
       });
-      xScale.domain(d3.extent(data, function(d) { return d.date; }));
+
+      xScale.domain(d3.extent(data, d => d.date));
       yScale.domain(d3.extent(data, d => d.weight));
       fatScale.domain(d3.extent(data, d => d.fat_ratio));
+
       svg.append("g")
 	  .attr("class", "x axis")
 	  .attr("transform", "translate(0," + height + ")")
@@ -100,15 +114,9 @@
 	  .attr("class", "y axis")
 	  .call(d3.axisLeft(yScale));
 
-      let smoothed = null, smoothness = 0.7;
       var weightLine = d3.line()
 	  .x(function (d) { return xScale(d.date); })
-	  .y(function (d) {
-	      smoothed = smoothed ?
-		  smoothness * d.weight + (1-smoothness) * smoothed :
-		  d.weight;
-	      return yScale(smoothed);
-	  })
+	  .y(function (d) { return yScale(d.weight_trend); })
 	  .curve(d3.curveMonotoneX);
 
       var fatLine = d3.line()
@@ -132,6 +140,7 @@
 	  .attr("class", "dot") // Assign a class for styling
 	  .attr("cx", function(d) { return xScale(d.date) })
 	  .attr("cy", function(d) { return yScale(d.weight) })
+      	  .attr("opacity", function(d) { return d.intensity; })
 	  .attr("r", 5)
 	  .on("mouseover", function(d) {
 	      divTooltip.transition()

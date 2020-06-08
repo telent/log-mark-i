@@ -7,15 +7,16 @@ import yaml
 import arrow
 import pickle
 import json
+import secrets
 
-from flask import Flask,redirect,request
+from flask import Flask, redirect, request, make_response
 app = Flask(__name__)
-
-credentials = None
 
 if path.exists("credentials.pickle"):
     credsfile = open("credentials.pickle", "rb")
     credentials = pickle.load(credsfile)
+else:
+    credentials = {}
 
 
 def withings_auth():
@@ -57,14 +58,18 @@ def index_html():
 
 @app.route('/')
 def index():
+    global credentials
     needCreds = False
-    if not credentials:
+    token = request.cookies.get('token')
+    creds = token and credentials.get(token, None)
+    if not creds:
         needCreds = True
-    try:
-        api = WithingsApi(credentials)
-        api.measure_get_meas()
-    except MissingTokenError:
-        needCreds = True
+    else:
+        try:
+            api = WithingsApi(creds)
+            api.measure_get_meas()
+        except MissingTokenError:
+            needCreds = True
 
     if needCreds:
         auth_redirect = withings_auth().get_authorize_url()
@@ -72,6 +77,8 @@ def index():
     else:
         return index_html()
 
+def new_token():
+    return secrets.token_urlsafe(32)
 
 @app.route('/callback')
 def withings_callback():
@@ -80,15 +87,20 @@ def withings_callback():
         parse.parse_qsl(parse.urlsplit(redirected_uri).query)
     )
     auth_code = redirected_uri_params["code"]
+    token = request.cookies.get('token') or new_token()
     global credentials
-    credentials = withings_auth().get_credentials(auth_code)
+    credentials[token] = withings_auth().get_credentials(auth_code)
     credsfile = open("credentials.pickle", "wb")
     pickle.dump(credentials, credsfile)
-    return redirect('/')
+    response = make_response(redirect('/'))
+    response.set_cookie('token', token, secure=True, httponly=True)
+    return response
 
 @app.route('/weights.json')
 def weights_json():
     global credentials
-    api = WithingsApi(credentials)
-    results = get_results(api)
-    return json.dumps(results)
+    token = request.cookies.get('token', None)
+    if token:
+        api = WithingsApi(credentials[token])
+        results = get_results(api)
+        return json.dumps(results)

@@ -87,7 +87,6 @@
       data.forEach(function(d) {
 	  d.date = parseTime(d.date);
 	  d.weight = d.weight/1000.0;
-	  d.fat_free_mass = d.fat_free_mass/1000.0;
       });
       xScale.domain(d3.extent(data, function(d) { return d.date; }));
       yScale.domain(d3.extent(data, d => d.weight));

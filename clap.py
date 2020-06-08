@@ -12,7 +12,6 @@ from flask import Flask,redirect,request
 app = Flask(__name__)
 
 credentials = None
-auth = None
 
 if path.exists("credentials.pickle"):
     credsfile = open("credentials.pickle", "rb")

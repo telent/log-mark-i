@@ -5,7 +5,7 @@
 /* 13. Basic Styling with CSS */
 
 /* Style the lines by removing the fill and applying a stroke */
-.line {
+.weightLine {
     fill: none;
     stroke: #ffab00;
     stroke-width: 3;
@@ -101,10 +101,16 @@
 	  .attr("class", "y axis")
 	  .call(d3.axisLeft(yScale));
 
+      let smoothed = null, smoothness = 0.7;
       var weightLine = d3.line()
 	  .x(function (d) { return xScale(d.date); })
-	  .y(function (d) { return yScale(d.weight);} )
-	  .curve(d3.curveMonotoneX)
+	  .y(function (d) {
+	      smoothed = smoothed ?
+		  smoothness * d.weight + (1-smoothness) * smoothed :
+		  d.weight;
+	      return yScale(smoothed);
+	  })
+	  .curve(d3.curveMonotoneX);
 
       var fatLine = d3.line()
 	  .x(function (d) { return xScale(d.date); })
@@ -113,7 +119,7 @@
 
       svg.append("path")
 	  .datum(data) // 10. Binds data to the line
-	  .attr("class", "line") // Assign a class for styling
+	  .attr("class", "weightLine") // Assign a class for styling
 	  .attr("d", weightLine); // 11. Calls the line generator
 
       svg.append("path")

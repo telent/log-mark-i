@@ -38,9 +38,9 @@ def withings_auth():
     )
     return auth
 
-def get_results(api):
-    meas_result = api.measure_get_meas(startdate=arrow.utcnow().shift(days=-91),
-                                       enddate=arrow.utcnow())
+def get_results(api, startdate, enddate):
+    meas_result = api.measure_get_meas(startdate=startdate,
+                                       enddate=enddate)
     measure_types = [MeasureType.WEIGHT,
                      MeasureType.FAT_FREE_MASS,
                      MeasureType.FAT_RATIO,
@@ -119,6 +119,8 @@ def weights_json():
     global credentials
     token = request.cookies.get('token', None)
     if token:
+        startdate = arrow.Arrow.fromtimestamp(int(request.args.get('start'))/1000)
+        enddate = arrow.Arrow.fromtimestamp(int(request.args.get('end'))/1000)
         api = WithingsApi(credentials[token])
-        results = get_results(api)
+        results = get_results(api, startdate, enddate)
         return json.dumps(results)

@@ -1,3 +1,7 @@
+# next steps:
+# - zoom and pan
+# - grey out points after 9am (less likely to be naked/fasted)
+
 from withings_api import WithingsAuth, WithingsApi, AuthScope
 from withings_api.common import get_measure_value, MeasureType, Credentials, query_measure_groups
 from oauthlib.oauth2.rfc6749.errors import MissingTokenError
@@ -35,7 +39,7 @@ def withings_auth():
     return auth
 
 def get_results(api):
-    meas_result = api.measure_get_meas(startdate=arrow.utcnow().shift(days=-21),
+    meas_result = api.measure_get_meas(startdate=arrow.utcnow().shift(days=-91),
                                        enddate=arrow.utcnow())
     measure_types = [MeasureType.WEIGHT,
                      MeasureType.FAT_FREE_MASS,
@@ -51,9 +55,17 @@ def get_results(api):
         out.append(row)
     return out
 
+@app.route('/graph.js')
+def graph_js():
+    return open("graph.js","r").read()
 
 def index_html():
     return open("index.html","r").read()
+
+@app.route('/test')
+def test_handler():
+    print(request.cookies.get('token'))
+    return "hey"
 
 
 @app.route('/')
@@ -79,6 +91,12 @@ def index():
 
 def new_token():
     return secrets.token_urlsafe(32)
+
+@app.route('/cookie')
+def send_cookie():
+    response = make_response(redirect('/test'))
+    response.set_cookie('token', new_token(), secure=True, httponly=True)
+    return response
 
 @app.route('/callback')
 def withings_callback():

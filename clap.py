@@ -26,6 +26,7 @@ class CredentialStore:
 
     def update(self, key, value):
         # need locking here to protect against simultaneous updates
+        print("updating credentials for ", key)
         self.data[key] = value
         credsfile = open("credentials.pickle", "wb")
         pickle.dump(self.data, credsfile)
@@ -79,7 +80,8 @@ def index():
         try:
             api = WithingsApi(creds)
             api.measure_get_meas() # check creds are still valid
-        except (MissingTokenError, AuthFailedException):
+        except (MissingTokenError, AuthFailedException) as e:
+            print("auth error", e)
             need_creds = True
 
     if need_creds:
@@ -111,11 +113,14 @@ def withings_callback():
 
 @app.route('/weights.json')
 def weights_json():
-    creds = credential_store.get(request.cookies.get('token', None), None)
+    token = request.cookies.get('token', None)
+    creds = credential_store.get(token, None)
     if not creds:
         return ('no token', 403)
 
-    api = WithingsApi(creds)
+    update_creds = lambda creds: credential_store.update(token, creds)
+    api = WithingsApi(creds, refresh_cb=update_creds)
+
     startdate = arrow.Arrow.fromtimestamp(int(request.args.get('start'))/1000)
     enddate = arrow.Arrow.fromtimestamp(int(request.args.get('end'))/1000)
     results = get_results(api, startdate, enddate)

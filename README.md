@@ -3,7 +3,9 @@
 > If you're API and you know weight, clap your hands.
 
 If you have a Withings wireless scale and you're not impressed with
-the Healthmate web ui, you might find this a bit prettier/more usable
+the Healthmate web ui, you might find this a bit prettier/more usable.
+
+![Screenshot](screenshot.png)
 
 ## Features
 

@@ -2,16 +2,18 @@
 # - zoom and pan
 # - grey out points after 9am (less likely to be naked/fasted)
 
-from withings_api import WithingsAuth, WithingsApi, AuthScope
-from withings_api.common import get_measure_value, MeasureType, Credentials, query_measure_groups, AuthFailedException
-from oauthlib.oauth2.rfc6749.errors import MissingTokenError
-from os import system,path
 from urllib import parse
-import yaml
-import arrow
 import pickle
 import json
 import secrets
+from os import path
+
+from withings_api import WithingsAuth, WithingsApi, AuthScope
+from withings_api.common import MeasureType, query_measure_groups, AuthFailedException
+from oauthlib.oauth2.rfc6749.errors import MissingTokenError
+import yaml
+import arrow
+
 
 from flask import Flask, redirect, request, make_response
 app = Flask(__name__)
@@ -24,11 +26,11 @@ else:
 
 
 def withings_auth():
-    secrets = yaml.load(open("secrets.json"))
+    tokens = yaml.load(open("secrets.json"))
     auth = WithingsAuth(
-        client_id=secrets['client_id'],
-        consumer_secret=secrets['consumer_secret'],
-        callback_uri=secrets['callback'],
+        client_id=tokens['client_id'],
+        consumer_secret=tokens['consumer_secret'],
+        callback_uri=tokens['callback'],
         scope=(
             AuthScope.USER_ACTIVITY,
             AuthScope.USER_METRICS,
@@ -49,45 +51,35 @@ def get_results(api, startdate, enddate):
     groups = query_measure_groups(meas_result, measure_types)
     out = []
     for group in groups:
-        row = { 'date': group.date.format() }
-        for m in group.measures:
-            row[m.type.name.lower()] = m.value # m.unit unused
+        row = {'date': group.date.format()}
+        for measure in group.measures:
+            row[measure.type.name.lower()] = measure.value # m.unit unused
         out.append(row)
     return out
 
 @app.route('/graph.js')
 def graph_js():
-    return open("graph.js","r").read()
-
-def index_html():
-    return open("index.html","r").read()
-
-@app.route('/test')
-def test_handler():
-    print(request.cookies.get('token'))
-    return "hey"
-
+    return open("graph.js", "r").read()
 
 @app.route('/')
 def index():
     global credentials
-    needCreds = False
+    need_creds = False
     token = request.cookies.get('token')
     creds = token and credentials.get(token, None)
     if not creds:
-        needCreds = True
+        need_creds = True
     else:
         try:
             api = WithingsApi(creds)
             api.measure_get_meas()
         except (MissingTokenError, AuthFailedException):
-            needCreds = True
+            need_creds = True
 
-    if needCreds:
+    if need_creds:
         auth_redirect = withings_auth().get_authorize_url()
         return redirect(auth_redirect)
-    else:
-        return index_html()
+    return open("index.html", "r").read()
 
 def new_token():
     return secrets.token_urlsafe(32)
@@ -124,3 +116,4 @@ def weights_json():
         api = WithingsApi(credentials[token])
         results = get_results(api, startdate, enddate)
         return json.dumps(results)
+    return ('no token', 403)

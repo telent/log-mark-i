@@ -101,9 +101,8 @@ def send_cookie():
 
 @app.route('/callback')
 def withings_callback():
-    redirected_uri = request.full_path
     redirected_uri_params = dict(
-        parse.parse_qsl(parse.urlsplit(redirected_uri).query)
+        parse.parse_qsl(parse.urlsplit(request.full_path).query)
     )
     auth_code = redirected_uri_params["code"]
     token = request.cookies.get('token') or new_token()

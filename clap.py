@@ -10,7 +10,7 @@ from oauthlib.oauth2.rfc6749.errors import MissingTokenError
 import yaml
 import arrow
 
-from flask import Flask, redirect, request, make_response
+from flask import Flask, redirect, request, make_response, Response
 app = Flask(__name__)
 
 class CredentialStore:
@@ -65,7 +65,8 @@ def get_results(api, startdate, enddate):
 
 @app.route('/graph.js')
 def graph_js():
-    return open("graph.js", "r").read()
+    return Response(open("graph.js", "r").read(),
+                    mimetype='text/javascript')
 
 @app.route('/')
 def index():

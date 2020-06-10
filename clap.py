@@ -1,7 +1,3 @@
-# next steps:
-# - zoom and pan
-# - grey out points after 9am (less likely to be naked/fasted)
-
 from urllib import parse
 import pickle
 import json
@@ -107,6 +103,7 @@ def withings_callback():
     auth_code = redirected_uri_params["code"]
     token = request.cookies.get('token') or new_token()
     credential_store.update(token, withings_auth().get_credentials(auth_code))
+
     response = make_response(redirect('/'))
     response.set_cookie('token', token, secure=True, httponly=True)
     return response

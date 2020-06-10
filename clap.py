@@ -14,20 +14,31 @@ from oauthlib.oauth2.rfc6749.errors import MissingTokenError
 import yaml
 import arrow
 
-
 from flask import Flask, redirect, request, make_response
 app = Flask(__name__)
 
-if path.exists("credentials.pickle"):
-    credsfile = open("credentials.pickle", "rb")
-    credentials = pickle.load(credsfile)
-else:
-    credentials = {}
+class CredentialStore:
+    def __init__(self):
+        if path.exists("credentials.pickle"):
+            credsfile = open("credentials.pickle", "rb")
+            self.data = pickle.load(credsfile)
+        else:
+            self.data = {}
 
+    def get(self, key, default):
+        return self.data.get(key, default) if key else default
+
+    def update(self, key, value):
+        # need locking here to protect against simultaneous updates
+        self.data[key] = value
+        credsfile = open("credentials.pickle", "wb")
+        pickle.dump(self.data, credsfile)
+
+credential_store = CredentialStore()
 
 def withings_auth():
     tokens = yaml.load(open("secrets.json"))
-    auth = WithingsAuth(
+    return WithingsAuth(
         client_id=tokens['client_id'],
         consumer_secret=tokens['consumer_secret'],
         callback_uri=tokens['callback'],
@@ -38,7 +49,6 @@ def withings_auth():
             AuthScope.USER_SLEEP_EVENTS,
         )
     )
-    return auth
 
 def get_results(api, startdate, enddate):
     meas_result = api.measure_get_meas(startdate=startdate,
@@ -63,16 +73,15 @@ def graph_js():
 
 @app.route('/')
 def index():
-    global credentials
     need_creds = False
     token = request.cookies.get('token')
-    creds = token and credentials.get(token, None)
+    creds = credential_store.get(token, None)
     if not creds:
         need_creds = True
     else:
         try:
             api = WithingsApi(creds)
-            api.measure_get_meas()
+            api.measure_get_meas() # check creds are still valid
         except (MissingTokenError, AuthFailedException):
             need_creds = True
 
@@ -98,22 +107,18 @@ def withings_callback():
     )
     auth_code = redirected_uri_params["code"]
     token = request.cookies.get('token') or new_token()
-    global credentials
-    credentials[token] = withings_auth().get_credentials(auth_code)
-    credsfile = open("credentials.pickle", "wb")
-    pickle.dump(credentials, credsfile)
+    credential_store.update(token, withings_auth().get_credentials(auth_code))
     response = make_response(redirect('/'))
     response.set_cookie('token', token, secure=True, httponly=True)
     return response
 
 @app.route('/weights.json')
 def weights_json():
-    global credentials
-    token = request.cookies.get('token', None)
-    if token:
+    creds = credential_store.get(request.cookies.get('token', None), None)
+    if creds:
+        api = WithingsApi(creds)
         startdate = arrow.Arrow.fromtimestamp(int(request.args.get('start'))/1000)
         enddate = arrow.Arrow.fromtimestamp(int(request.args.get('end'))/1000)
-        api = WithingsApi(credentials[token])
         results = get_results(api, startdate, enddate)
         return json.dumps(results)
     return ('no token', 403)

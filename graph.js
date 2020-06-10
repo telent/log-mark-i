@@ -12,11 +12,8 @@ var divTooltip = d3.select("body").append("div")
 var xScale = d3.scaleTime()
     .range([0, width]); // output
 
-var yScale = d3.scaleLinear()
-    .range([height, 0]); // output
-
-var fatScale = d3.scaleLinear()
-    .range([height, 0]); // output
+var yScale = d3.scaleLinear().range([height, 0]);
+var fatScale = d3.scaleLinear().range([height, 0]);
 
 var svg = d3.select("body").append("svg")
     .attr("class", "svg")
@@ -45,16 +42,20 @@ function reload_data() {
 	data.forEach(function(d, i) {
 	    d.date = parseTime(d.date);
 	    d.weight = d.weight/1000.0;
+	    d.fat_ratio = d.fat_ratio/1000;
 	    if(earlier) {
 		let lag = earlier.date - d.date, // milliseconds
 		    m = Math.exp(-lag*lambda);
 		earlier.weight = (1-m)*d.weight + (m)*earlier.weight
+		d.fat_ratio = d.fat_ratio || earlier.fat_ratio;
+		earlier.fat_ratio = (1-m)*d.fat_ratio + (m)*earlier.fat_ratio;
 		d.intensity = Math.max(0.2, Math.min(1,lag/86400000.0));
 	    } else {
-		earlier = { weight: d.weight };
+		earlier = { weight: d.weight, fat_ratio: d.fat_ratio };
 		d.intensity = 1;
 	    }
 	    earlier.date = d.date;
+	    d.fat_trend = earlier.fat_ratio;
 	    d.weight_trend = earlier.weight;
 	});
 
@@ -72,14 +73,19 @@ function reload_data() {
 	    .attr("class", "y axis")
 	    .call(d3.axisLeft(yScale));
 
+	svg.insert("g", ":first-child")
+	    .attr("class", "y axis")
+	    .attr("transform", "translate(" + width + ",0)")
+	    .call(d3.axisRight(fatScale));
+
 	var weightLine = d3.line()
-	    .x(function (d) { return xScale(d.date); })
-	    .y(function (d) { return yScale(d.weight_trend); })
+	    .x(d => xScale(d.date))
+	    .y(d => yScale(d.weight_trend))
 	    .curve(d3.curveMonotoneX);
 
 	var fatLine = d3.line()
-	    .x(function (d) { return xScale(d.date); })
-	    .y(function (d) { return fatScale(d.fat_ratio);} )
+	    .x(d => xScale(d.date))
+	    .y(d => fatScale(d.fat_trend))
 	    .curve(d3.curveMonotoneX)
 
 	svg.insert("path", ":first-child")

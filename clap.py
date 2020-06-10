@@ -115,10 +115,11 @@ def withings_callback():
 @app.route('/weights.json')
 def weights_json():
     creds = credential_store.get(request.cookies.get('token', None), None)
-    if creds:
-        api = WithingsApi(creds)
-        startdate = arrow.Arrow.fromtimestamp(int(request.args.get('start'))/1000)
-        enddate = arrow.Arrow.fromtimestamp(int(request.args.get('end'))/1000)
-        results = get_results(api, startdate, enddate)
-        return json.dumps(results)
-    return ('no token', 403)
+    if not creds:
+        return ('no token', 403)
+
+    api = WithingsApi(creds)
+    startdate = arrow.Arrow.fromtimestamp(int(request.args.get('start'))/1000)
+    enddate = arrow.Arrow.fromtimestamp(int(request.args.get('end'))/1000)
+    results = get_results(api, startdate, enddate)
+    return json.dumps(results)

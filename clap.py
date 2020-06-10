@@ -3,7 +3,7 @@
 # - grey out points after 9am (less likely to be naked/fasted)
 
 from withings_api import WithingsAuth, WithingsApi, AuthScope
-from withings_api.common import get_measure_value, MeasureType, Credentials, query_measure_groups
+from withings_api.common import get_measure_value, MeasureType, Credentials, query_measure_groups, AuthFailedException
 from oauthlib.oauth2.rfc6749.errors import MissingTokenError
 from os import system,path
 from urllib import parse
@@ -80,7 +80,7 @@ def index():
         try:
             api = WithingsApi(creds)
             api.measure_get_meas()
-        except MissingTokenError:
+        except (MissingTokenError, AuthFailedException):
             needCreds = True
 
     if needCreds:

@@ -93,7 +93,7 @@ function reload_data() {
 	    .attr("d", fatLine);
 
 	var gDots = svg
-	    .insert('g', '.listener-rect')
+	    .append('g')	// after the listener
 	    .attr('class', 'dots-group');
 
 	dots = gDots.selectAll(".dot")

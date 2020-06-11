@@ -60,7 +60,7 @@ def get_results(api, startdate, enddate):
     for group in groups:
         row = {'date': group.date.format()}
         for measure in group.measures:
-            row[measure.type.name.lower()] = measure.value # m.unit unused
+            row[measure.type.name.lower()] = measure.value * pow(10, measure.unit)
         out.append(row)
     return out
 

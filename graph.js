@@ -34,6 +34,15 @@ function reload_data() {
 	.then(payload => { data = payload; refresh_view();});
 }
 
+function tooltipText(datum) {
+    var f = new Intl.NumberFormat(navigator.language,
+			  { maximumSignificantDigits: 3 })
+    return formatTime(datum.date) + "<br/>" +
+	datum.weight + "kg" + "<br/>" +
+	f.format(datum.fat_ratio) + "%";
+}
+
+
 function refresh_view() {
     svg.selectAll('*').remove();
     var listenerRect = svg.append('rect')
@@ -124,10 +133,8 @@ function refresh_view() {
 	.on("mouseover", function(d) {
 	    divTooltip.transition()
 		.duration(200)
-		.style("opacity", 0.7);
-	    divTooltip.html(formatTime(d.date) + "<br/>" +
-			    d.weight + "kg" + "<br/>" +
-			    (d.fat_ratio) + "%" )
+		.style("opacity", 0.7)
+	    divTooltip.html(tooltipText(d))
 		.style("left", (d3.event.pageX) + "px")
                 .style("top", (d3.event.pageY - 28) + "px");
 	    d3.select(this).attr("class", "focus");

@@ -39,13 +39,16 @@ the Client Id and Consumer Secret they provide you with, and create a
 
 Start the server running with 
 
-```
-FLASK_APP=clap.py FLASK_ENV=development FLASK_PORT=5007 python -m flask run --host=0.0.0.0  --port=5007
-```
+    FLASK_ENV=development python clap.py
 
-Create a proxy pointing at it so that you can access it with HTTPS: I
-did this with Nginx, but ngrok or something else would work just as
-well.  If you don't/won't/can't use HTTPS you need to edit the call to
+if you're actively hacking on it, or 
+
+    gunicorn --bind 0.0.0.0:5007 clap:app
+
+if you want a more "production" envcironment.  Create a proxy pointing
+at it so that you can access it with HTTPS: I did this with Nginx, but
+ngrok or something else would work just as well.  If you
+don't/won't/can't use HTTPS you need to edit the call to
 `response.set_cookie` to remove `secure=True`
 
 ## Development

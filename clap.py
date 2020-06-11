@@ -125,3 +125,6 @@ def weights_json():
     enddate = arrow.Arrow.fromtimestamp(int(request.args.get('end'))/1000)
     results = get_results(api, startdate, enddate)
     return json.dumps(results)
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=5007)

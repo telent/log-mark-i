@@ -1,5 +1,5 @@
 with import <nixpkgs> {};
-let pypkgs = with python38Packages; [ pip pylint setuptools pyyaml flask ]; in
+let pypkgs = with python38Packages; [ pip pylint setuptools pyyaml flask gunicorn ]; in
 stdenv.mkDerivation rec {
   pname = "clap-hands";
   version = "1";

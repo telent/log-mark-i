@@ -1,59 +1,12 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-
-<style type="text/css">
-/* 13. Basic Styling with CSS */
-
-/* Style the lines by removing the fill and applying a stroke */
-.weightLine {
-    fill: none;
-    stroke: #ffab00;
-    stroke-width: 3;
-}
-.fatLine {
-    fill: none;
-    stroke: #77ab00;
-    stroke-width: 3;
-    opacity: 0.5;
-}
-
-.tooltip {
-    position: absolute;
-    text-align: center;
-    width: 90px;
-    height: 42px;
-    padding: 2px;
-    font: 12px sans-serif;
-    background: lightsteelblue;
-    border: 0px;
-    border-radius: 8px;
-    pointer-events: none;
-}
-
-
-.overlay {
-  fill: none;
-  pointer-events: all;
-}
-
-/* Style the dots by assigning a fill and stroke */
-.dot {
-    fill: #ffab00;
-    stroke: #fff;
-}
-
-.dot.focus {
-  fill: none;
-  stroke: steelblue;
-}
-
-</style>
-<!-- Body tag is where we will append our SVG and SVG objects-->
-<body>
-</body>
-
-<!-- Load in the d3 library -->
-<script src="https://d3js.org/d3.v5.min.js"></script>
-<script src="/static/graph.js" />
-
-</script>
+<html>
+  <head>
+    <title>Clap Hands</title>
+    <link rel="stylesheet"
+	  href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+  </body>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="{{ url_for('static', filename='graph.js') }}"></script>
+</html>

@@ -1,20 +1,7 @@
 import os
 import yaml
 from flask import Flask
-from withings_api import WithingsAuth, AuthScope
 
-def withings_auth(tokens):
-    return WithingsAuth(
-        client_id=tokens['client_id'],
-        consumer_secret=tokens['consumer_secret'],
-        callback_uri=tokens['callback'],
-        scope=(
-            AuthScope.USER_ACTIVITY,
-            AuthScope.USER_METRICS,
-            AuthScope.USER_INFO,
-            AuthScope.USER_SLEEP_EVENTS,
-        )
-    )
 
 def create_app(test_config=None):
     # create and configure the app
@@ -41,6 +28,5 @@ def create_app(test_config=None):
     from . import withings
     from . import homepage
     app.register_blueprint(homepage.bp)
-    app.register_blueprint(withings.bp)
 
     return app

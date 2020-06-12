@@ -13,26 +13,10 @@ from oauthlib.oauth2.rfc6749.errors import MissingTokenError
 from flask import Flask, redirect, request, make_response, Response, render_template, Blueprint
 
 from claphands.credentials import get_credential_store
-from claphands.withings import get_withings_auth
+from claphands.withings import get_withings_auth, get_results
 
 bp = Blueprint('homepage', __name__, url_prefix='/')
 
-def get_results(api, startdate, enddate):
-    meas_result = api.measure_get_meas(startdate=startdate,
-                                       enddate=enddate)
-    measure_types = [MeasureType.WEIGHT,
-                     MeasureType.FAT_FREE_MASS,
-                     MeasureType.FAT_RATIO,
-                     MeasureType.FAT_MASS_WEIGHT]
-
-    groups = query_measure_groups(meas_result, measure_types)
-    out = []
-    for group in groups:
-        row = {'date': group.date.format()}
-        for measure in group.measures:
-            row[measure.type.name.lower()] = measure.value * pow(10, measure.unit)
-        out.append(row)
-    return out
 
 @bp.route('/')
 def homepage():
@@ -69,3 +53,19 @@ def weights_json():
     enddate = arrow.Arrow.fromtimestamp(int(request.args.get('end'))/1000)
     results = get_results(api, startdate, enddate)
     return json.dumps(results)
+
+def new_token():
+    return secrets.token_urlsafe(32)
+
+@bp.route('/withings/callback')
+def callback():
+    redirected_uri_params = dict(
+        parse.parse_qsl(parse.urlsplit(request.full_path).query)
+    )
+    auth_code = redirected_uri_params["code"]
+    token = request.cookies.get('token') or new_token()
+    get_credential_store().update(token, get_withings_auth().get_credentials(auth_code))
+
+    response = make_response(redirect('/'))
+    response.set_cookie('token', token, secure=True, httponly=True)
+    return response

@@ -1,5 +1,5 @@
 from setuptools import find_packages, setup
-import json
+import yaml
 
 def requirements():
     # we keep requirements in a separate file to make it easier for nix

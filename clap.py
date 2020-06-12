@@ -10,7 +10,7 @@ from oauthlib.oauth2.rfc6749.errors import MissingTokenError
 import yaml
 import arrow
 
-from flask import Flask, redirect, request, make_response, Response
+from flask import Flask, redirect, request, make_response, Response, render_template
 app = Flask(__name__)
 
 class CredentialStore:
@@ -87,7 +87,7 @@ def index():
     if need_creds:
         auth_redirect = withings_auth().get_authorize_url()
         return redirect(auth_redirect)
-    return open("index.html", "r").read()
+    return render_template("index.html")
 
 def new_token():
     return secrets.token_urlsafe(32)

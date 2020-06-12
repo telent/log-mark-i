@@ -4,9 +4,9 @@ import pickle
 
 class CredentialStore:
     def __init__(self, pathname):
+        self.pathname = pathname
         if path.exists(pathname):
             credsfile = open(pathname, "rb")
-            self.pathname = pathname
             self.data = pickle.load(credsfile)
         else:
             self.data = {}

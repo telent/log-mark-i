@@ -13,7 +13,7 @@ def create_app(test_config=None):
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
-        app.config.from_json('config.json', silent=True)
+        app.config.from_json('config.json', silent=False)
     else:
         # load the test config if passed in
         app.config.from_mapping(test_config)

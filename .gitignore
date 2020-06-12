@@ -1,3 +1,4 @@
 credentials.pickle
 secrets.json
 __pycache__/
+*~

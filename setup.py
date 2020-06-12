@@ -1,10 +1,10 @@
 from setuptools import find_packages, setup
-import yaml
+import json
 
 def requirements():
     # we keep requirements in a separate file to make it easier for nix
     with open("pypkgs.json","r") as fh:
-        return yaml.load(fh)
+        return json.load(fh)
 
 setup(
     name='claphands',

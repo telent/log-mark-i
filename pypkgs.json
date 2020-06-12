@@ -1,1 +1,1 @@
-["flask", "gunicorn", "pip", "pylint", "pyyaml", "setuptools"]
+["flask", "gunicorn", "pip", "pylint", "pyyaml", "setuptools", "withings_api"]

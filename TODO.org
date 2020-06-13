@@ -1,0 +1,9 @@
+* DONE plot individual weight points only when zoomed in
+* plot fat points as dots
+* on-screen toggles to show/hide lines, points
+* delete measure, unassign measure
+* emulate withings mouseover behaviour
+  - show closest measure to wherever the mouse is, not just when over a dot
+* figure out why we have to reauth to withings so often
+* refresh button, visual indicator of last refresh time
+  - sometimes weighins take a while to appear on the page

@@ -89,10 +89,12 @@ function refresh_view() {
 
     yScale
 	.range([height, 0])
-	.domain(d3.extent(data, d => d.weight));
+	.domain(d3.extent(data, d => d.weight))
+	.nice();
     fatScale
 	.range([height, 0])
-	.domain(d3.extent(data, d => d.fat_ratio));
+	.domain(d3.extent(data, d => d.fat_ratio))
+	.nice();
 
     var xAxis = d3.axisBottom(xScale);
     var gx = svg.insert("g", ":first-child")

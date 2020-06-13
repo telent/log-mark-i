@@ -9,11 +9,9 @@ var divTooltip = d3.select("body").append("div")
     .attr("class", "tooltip")
     .style("opacity", 0);
 
-var xScale = d3.scaleTime()
-    .range([0, width]); // output
-
-var yScale = d3.scaleLinear().range([height, 0]);
-var fatScale = d3.scaleLinear().range([height, 0]);
+var xScale = d3.scaleTime();
+var yScale = d3.scaleLinear();
+var fatScale = d3.scaleLinear();
 
 var svg = d3.select("body").append("svg")
     .attr("class", "svg")
@@ -44,6 +42,9 @@ function tooltipText(datum) {
 
 
 function refresh_view() {
+    width = window.innerWidth - margin.left - margin.right;
+    height = window.innerHeight - margin.top - margin.bottom;
+
     svg.selectAll('*').remove();
     var listenerRect = svg.append('rect')
 	.attr('class', 'listener-rect')
@@ -55,7 +56,13 @@ function refresh_view() {
 
     let earlier = null, lambda = 0.10/86400000;
 
-    xScale.domain(dateExtent);
+    svg
+	.attr("width", width + margin.left + margin.right)
+	.attr("height", height + margin.top + margin.bottom);
+
+    xScale
+	.range([0, width])
+	.domain(dateExtent);
     data.forEach(function(d, i) {
 	d.date = parseTime(d.date);
 	if(earlier) {
@@ -80,8 +87,12 @@ function refresh_view() {
 	d.weight_trend = earlier.weight;
     });
 
-    yScale.domain(d3.extent(data, d => d.weight));
-    fatScale.domain(d3.extent(data, d => d.fat_ratio));
+    yScale
+	.range([height, 0])
+	.domain(d3.extent(data, d => d.weight));
+    fatScale
+	.range([height, 0])
+	.domain(d3.extent(data, d => d.fat_ratio));
 
     var xAxis = d3.axisBottom(xScale);
     var gx = svg.insert("g", ":first-child")
@@ -106,7 +117,7 @@ function refresh_view() {
     var fatLine = d3.line()
 	.x(d => xScale(d.date))
 	.y(d => fatScale(d.fat_trend))
-	.curve(d3.curveMonotoneX)
+	.curve(d3.curveBasis)
 
     svg.insert("path", ":first-child")
 	.datum(data)
@@ -174,3 +185,20 @@ function refresh_view() {
 }
 
 reload_data();
+
+function debounce(event, f) {
+    let inner = () => {
+	var timeout= null;
+	window.addEventListener(event, (e) => {
+	    if(! timeout)
+		timeout = window.requestAnimationFrame(() => {
+		    f();
+		    timeout = null;
+		})
+	});
+    };
+    inner()
+};
+
+debounce('resize', refresh_view);
+debounce('orientationchange', refresh_view);

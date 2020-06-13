@@ -9,9 +9,9 @@ the Healthmate web ui, you might find this a bit prettier/more usable.
 
 ## Features
 
-* Displays weight measures and trend line based on exponetial moving average
+* Displays weight measures and trend line based on exponential moving average
 
-* Displays fat percentage (unsmoothed, WIP)
+* Displays fat percentage
 
 * Zoom and pan using standard gestures (drag, scroll wheel zoom,
   pinch-to-zoom on mobile, etc)

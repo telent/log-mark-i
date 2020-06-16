@@ -34,9 +34,9 @@ function reload_data() {
 
 function tooltipText(datum) {
     var f = new Intl.NumberFormat(navigator.language,
-			  { maximumSignificantDigits: 3 })
+				  { maximumSignificantDigits: 3 })
     return formatTime(datum.date) + "<br/>" +
-	datum.weight + "kg" + "<br/>" +
+	f.format(datum.weight) + "kg" + "<br/>" +
 	f.format(datum.fat_ratio) + "%";
 }
 

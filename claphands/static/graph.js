@@ -91,7 +91,7 @@ function refresh_view() {
             if(xScale(earlier.date) - xScale(d.date) > 10)
                 d.intensity = Math.max(0.2, Math.min(1,lag/86400000.0));
             else
-                d.intensity = 0;
+                d.intensity = 0.2;
         } else {
             earlier = { weight: d.weight, fat_ratio: d.fat_ratio };
             d.intensity = 1;
@@ -244,11 +244,15 @@ function nearest_measure(data, timestamp, s, e)
     if(e == s) return s;
     if(e == s+1) {
         // terminating
-        console.assert((s<0) || (data[s].date  > timestamp),
+	var startdate = (s<0) ? (new Date()) : data[s].date;
+	var enddate = (e>=data.length) ? (new Date(0)) : data[e].date;
+        console.assert((startdate  > timestamp),
                        "start", s, data[s], timestamp);
-        console.assert((e>=data.length) || (data[e].date  <= timestamp),
+        console.assert((enddate <= timestamp),
                        "end", e, data[e], timestamp);
-        return s;
+	var dleft = startdate - timestamp;
+	var dright = timestamp - enddate;
+	return (dleft < dright) ? s : e
     }
 
     var mid = Math.floor((e + s) /2);

@@ -40,6 +40,18 @@ function tooltipText(datum) {
         f.format(datum.fat_ratio) + "%";
 }
 
+function popupForMeasure(index, datum, x, y)
+{
+    d3.select("circle.focus").attr("class", "dot");
+    d3.select("circle:nth-child("+ (index +1 )+")").attr("class", "focus");
+
+    divTooltip.transition()
+        .duration(200)
+        .style("opacity", 0.7)
+    divTooltip.html(tooltipText(datum))
+        .style("left", x + "px")
+        .style("top", (y - 50) + "px");
+}
 
 function refresh_view() {
     width = window.innerWidth - margin.left - margin.right;
@@ -77,7 +89,7 @@ function refresh_view() {
             if(xScale(earlier.date) - xScale(d.date) > 10)
                 d.intensity = Math.max(0.2, Math.min(1,lag/86400000.0));
             else
-                d.intensity = 0;
+                d.intensity = 0.2;
         } else {
             earlier = { weight: d.weight, fat_ratio: d.fat_ratio };
             d.intensity = 1;
@@ -98,7 +110,6 @@ function refresh_view() {
 
     var xAxis = d3.axisBottom(xScale);
     var gx = svg.insert("g", ":first-child")
-        .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
         .call(xAxis);
 
@@ -126,6 +137,24 @@ function refresh_view() {
         .attr("class", "weightLine")
         .attr("d", weightLine);
 
+    function mousemove_cb() {
+        var [x,y] = d3.mouse(d3.event.target);
+        var index = nearest_measure(data, xScale.invert(x));
+        if(index<0) index=0;
+        popupForMeasure(index, data[index], x, y);
+    };
+
+    svg.append("path")
+        .datum(data)
+        .attr("class", "invisibleLine")
+        .attr("d", weightLine)
+        .on("mousemove", mousemove_cb);
+    svg.append("path")
+        .datum(data)
+        .attr("class", "invisibleLine")
+        .attr("d", fatLine)
+        .on("mousemove", mousemove_cb);
+
     svg.insert("path", ":first-child")
         .datum(data)
         .attr("class", "fatLine")
@@ -142,19 +171,7 @@ function refresh_view() {
         .attr("cx", function(d) { return xScale(d.date) })
         .attr("cy", function(d) { return yScale(d.weight) })
         .attr("opacity", function(d) { return d.intensity; })
-        .attr("r", 5)
-        .on("mouseover", function(d) {
-            divTooltip.transition()
-                .duration(200)
-                .style("opacity", 0.7)
-            divTooltip.html(tooltipText(d))
-                .style("left", (d3.event.pageX) + "px")
-                .style("top", (d3.event.pageY - 28) + "px");
-            d3.select(this).attr("class", "focus");
-        })
-        .on("mouseleave", function(a, b, c) {
-            d3.select(this).attr("class", "dot");
-        })
+        .attr("r", 5);
 
     var zoom = d3.zoom()
         .on("zoom", zooming)
@@ -186,7 +203,36 @@ function refresh_view() {
     listenerRect.call(zoom);
 }
 
-reload_data();
+function nearest_measure(data, timestamp, s, e)
+{
+    // find oldest element newer than timestamp in the array
+    // of data, noting that data is ordered most-recent-first
+
+    // invariant: the interval data[s,e) which contains an
+    // element > timestamp next to another element <= timestamp.  To
+    // make this hold at the edges, we deem elements outside of the
+    // array to have timestamps Inf or 0 as appropriate
+
+    s = s || 0;
+    e = e || data.length;
+
+    if(e == s) return s;
+    if(e == s+1) {
+        // terminating
+        console.assert((s<0) || (data[s].date  > timestamp),
+                       "start", s, data[s], timestamp);
+        console.assert((e>=data.length || (data[e].date  <= timestamp),
+                        "end", e, data[e], timestamp));
+        return s;
+    }
+
+    var mid = Math.floor((e + s) /2);
+
+    if(data[mid].date > timestamp)
+        return nearest_measure(data, timestamp, mid, e);
+    else
+        return nearest_measure(data, timestamp, s, mid);
+}
 
 function debounce(event, f) {
     let inner = () => {
@@ -204,3 +250,5 @@ function debounce(event, f) {
 
 debounce('resize', refresh_view);
 debounce('orientationchange', refresh_view);
+
+reload_data();

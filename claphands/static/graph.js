@@ -91,7 +91,7 @@ function refresh_view() {
             if(xScale(earlier.date) - xScale(d.date) > 10)
                 d.intensity = Math.max(0.2, Math.min(1,lag/86400000.0));
             else
-                d.intensity = 0.2;
+                d.intensity = 0;
         } else {
             earlier = { weight: d.weight, fat_ratio: d.fat_ratio };
             d.intensity = 1;
@@ -139,6 +139,11 @@ function refresh_view() {
         .attr("class", "weightLine")
         .attr("d", weightLine);
 
+    svg.insert("path", ":first-child")
+        .datum(data)
+        .attr("class", "fatLine")
+        .attr("d", fatLine);
+
     function mousemove_cb() {
         var [x,y] = d3.mouse(d3.event.target);
         var index = nearest_measure(data, xScale.invert(x));
@@ -150,20 +155,20 @@ function refresh_view() {
         .datum(data)
         .attr("class", "invisibleLine")
         .attr("d", weightLine)
+	.on("mouseover", () => { gDots.attr("visibility", "visible") })
+	.on("mouseleave", () => { gDots.attr("visibility", "hidden") })
         .on("mousemove", mousemove_cb);
     svg.append("path")
         .datum(data)
         .attr("class", "invisibleLine")
         .attr("d", fatLine)
+	.on("mouseover", () => { gFatDots.attr("visibility", "visible")	})
+	.on("mouseleave", () => { gFatDots.attr("visibility", "hidden")	})
         .on("mousemove", mousemove_cb);
-
-    svg.insert("path", ":first-child")
-        .datum(data)
-        .attr("class", "fatLine")
-        .attr("d", fatLine);
 
     var gDots = svg
         .append('g')    // after the listener
+	.attr("visibility", "hidden")
         .attr('class', 'dots-group');
 
     dots = gDots.selectAll(".dot")
@@ -177,6 +182,7 @@ function refresh_view() {
 
     var gFatDots = svg
         .append('g')    // after the listener
+	.attr("visibility", "hidden")
         .attr('class', 'fat-dots-group');
 
     fatDots = gFatDots.selectAll(".fatdot")
@@ -240,8 +246,8 @@ function nearest_measure(data, timestamp, s, e)
         // terminating
         console.assert((s<0) || (data[s].date  > timestamp),
                        "start", s, data[s], timestamp);
-        console.assert((e>=data.length || (data[e].date  <= timestamp),
-                        "end", e, data[e], timestamp));
+        console.assert((e>=data.length) || (data[e].date  <= timestamp),
+                       "end", e, data[e], timestamp);
         return s;
     }
 

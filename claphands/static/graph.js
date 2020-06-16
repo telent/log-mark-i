@@ -103,11 +103,11 @@ function refresh_view() {
 	.call(xAxis);
 
     var gy = svg.insert("g", ":first-child")
-	.attr("class", "y axis")
+	.attr("class", "yaxis")
 	.call(d3.axisLeft(yScale));
 
     svg.insert("g", ":first-child")
-	.attr("class", "y axis")
+	.attr("class", "fataxis")
 	.attr("transform", "translate(" + width + ",0)")
 	.call(d3.axisRight(fatScale));
 

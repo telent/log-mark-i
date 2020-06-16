@@ -3,6 +3,12 @@
     stroke: #ffab00;
     stroke-width: 3;
 }
+.yaxis {
+    stroke: #885500;
+}
+.fataxis {
+    stroke: #336600;
+}
 .fatLine {
     fill: none;
     stroke: #77ab00;

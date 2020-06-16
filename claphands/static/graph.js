@@ -42,8 +42,10 @@ function tooltipText(datum) {
 
 function popupForMeasure(index, datum, x, y)
 {
-    d3.select("circle.focus").attr("class", "dot");
+    d3.selectAll("circle.focus").attr("class", "dot");
     d3.select("circle:nth-child("+ (index +1 )+")").attr("class", "focus");
+    d3.selectAll("rect.focus").attr("class", "fatdot");
+    d3.select("rect.fatdot:nth-child("+ (index +1 )+")").attr("class", "focus");
 
     divTooltip.transition()
         .duration(200)
@@ -173,6 +175,22 @@ function refresh_view() {
         .attr("opacity", function(d) { return d.intensity; })
         .attr("r", 5);
 
+    var gFatDots = svg
+        .append('g')    // after the listener
+        .attr('class', 'fat-dots-group');
+
+    fatDots = gFatDots.selectAll(".fatdot")
+        .data(data)
+        .enter().append("rect")
+        .attr("class", "fatdot")
+        .attr("x", function(d) { return xScale(d.date)-4; })
+        .attr("y", function(d) {
+	    return fatScale(d.fat_ratio)-4;
+	})
+        .attr("opacity", function(d) { return d.intensity; })
+        .attr("width", 8)
+	.attr("height", 8);
+
     var zoom = d3.zoom()
         .on("zoom", zooming)
         .on("end", zoomed);
@@ -187,6 +205,7 @@ function refresh_view() {
         svg.select("path.weightLine").attr("d", weightLine);
         svg.select("path.fatLine").attr("d", fatLine);
         dots.attr('cx', function(d) { return newScale(d.date); })
+	fatDots.attr('x', function(d) { return newScale(d.date)-3; })
     };
     function zoomed() {
         var transform = d3.event.transform;

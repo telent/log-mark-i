@@ -3,6 +3,9 @@
     stroke: #ffab00;
     stroke-width: 3;
 }
+.xaxis {
+    stroke: black;
+}
 .yaxis {
     stroke: #885500;
 }
@@ -25,16 +28,15 @@
 .tooltip {
     position: absolute;
     text-align: center;
-    width: 90px;
-    height: 42px;
-    padding: 2px;
-    font: 12px sans-serif;
+    width: 150px;
+    height: 82px;
+    padding: 4px;
+    font: 16px sans-serif;
     background: lightsteelblue;
-    border: 0px;
+    border: 6px;
     border-radius: 8px;
     pointer-events: none;
 }
-
 
 .overlay {
   fill: none;
@@ -47,8 +49,13 @@
     stroke: #fff;
 }
 
+.fatdot {
+    fill: #77ab00;
+    stroke: #fff;
+}
+
 .focus {
     fill: #886600;
     opacity: 0.7;
-    stroke: steelblue;
+    stroke: yellow;
 }

@@ -60,3 +60,12 @@
     stroke: yellow;
     border: 4px;
 }
+
+.iconify.refresh {
+    position: absolute;
+    right: 3em;
+    top: 1em;
+    width: 24px;
+    height: 24px;
+    z-index: 1;
+}

@@ -20,6 +20,10 @@ var svg = d3.select("body").append("svg")
     .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+var refreshButton = d3.select("body").append("img")
+    .attr("class", "iconify refresh")
+    .attr("src", "/static/refresh.svg");
+
 var timeNow = new Date();
 var dateExtent = [d3.timeDay.offset(timeNow, -60),
                   timeNow];
@@ -280,4 +284,5 @@ function debounce(event, f) {
 debounce('resize', refresh_view);
 debounce('orientationchange', refresh_view);
 
+refreshButton.on('click', reload_data);
 reload_data();

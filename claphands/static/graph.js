@@ -30,10 +30,23 @@ var dateExtent = [d3.timeDay.offset(timeNow, -60),
 
 var data;
 
+function promptForReloadPage(message) {
+    d3.select("body").insert("div", ":first-child")
+	.attr("class", "flash")
+	.html("<p><b>Received an error from Withings:</b> " + message +
+	      "<p>Try reloading the page")
+	.insert("button", ":first-child")
+	.html("Reload now")
+	.on('click', () => { window.location.reload(); });
+}
+
 function reload_data() {
     let [startDate, endDate] = dateExtent.map(d => d.getTime());
     d3.json("/weights.json?start=" + startDate + "&end=" +endDate)
-        .then(payload => { data = payload; refresh_view();});
+        .then(payload => { data = payload; refresh_view();})
+	.catch(err => {
+	    if(err.message.startsWith("403")) promptForReloadPage(err.message);
+	});
 }
 
 function tooltipText(datum) {

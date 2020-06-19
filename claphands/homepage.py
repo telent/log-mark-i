@@ -17,38 +17,36 @@ from claphands.withings import get_withings_auth, get_results
 
 bp = Blueprint('homepage', __name__, url_prefix='/')
 
-
-@bp.route('/')
-def homepage():
+def get_api_handle(request):
     need_creds = False
     token = request.cookies.get('token')
-    creds = get_credential_store().get(token, None)
-    if not creds:
-        need_creds = True
-    else:
+    credential_store = get_credential_store()
+    creds = credential_store.get(token, None)
+    update_creds = lambda creds: credential_store.update(token, creds)
+    api = WithingsApi(creds, refresh_cb=update_creds)
+    if creds:
         try:
             api = WithingsApi(creds)
             api.measure_get_meas() # check creds are still valid
+            return api
         except (MissingTokenError, AuthFailedException) as e:
             print("auth error", e)
-            need_creds = True
+    return None
 
-    if need_creds:
+
+@bp.route('/')
+def homepage():
+    api = get_api_handle(request)
+    if not api:
         auth_redirect = get_withings_auth().get_authorize_url()
         return redirect(auth_redirect)
     return render_template("index.html")
 
 @bp.route('/weights.json')
 def weights_json():
-    token = request.cookies.get('token', None)
-    credential_store = get_credential_store()
-    creds = credential_store.get(token, None)
-    if not creds:
+    api = get_api_handle(request)
+    if not api:
         return ('no token', 403)
-
-    update_creds = lambda creds: credential_store.update(token, creds)
-    api = WithingsApi(creds, refresh_cb=update_creds)
-
     startdate = arrow.Arrow.fromtimestamp(int(request.args.get('start'))/1000)
     enddate = arrow.Arrow.fromtimestamp(int(request.args.get('end'))/1000)
     results = get_results(api, startdate, enddate)

@@ -69,3 +69,16 @@
     height: 24px;
     z-index: 1;
 }
+
+div.flash {
+    background-color: #ff8888;
+    padding: 0.5em 1em;
+    border: 2px solid #883333;
+    border-radius: 3px;
+    position: relative;
+}
+div.flash button {
+    position: absolute;
+    bottom: 2em;
+    right: 1em;
+}

@@ -22,11 +22,10 @@ def get_api_handle(request):
     token = request.cookies.get('token')
     credential_store = get_credential_store()
     creds = credential_store.get(token, None)
-    update_creds = lambda creds: credential_store.update(token, creds)
-    api = WithingsApi(creds, refresh_cb=update_creds)
     if creds:
+        update_creds = lambda creds: credential_store.update(token, creds)
         try:
-            api = WithingsApi(creds)
+            api = WithingsApi(creds, refresh_cb=update_creds)
             api.measure_get_meas() # check creds are still valid
             return api
         except (MissingTokenError, AuthFailedException) as e:
@@ -67,3 +66,9 @@ def callback():
     response = make_response(redirect('/'))
     response.set_cookie('token', token, secure=True, httponly=True)
     return response
+
+@bp.route('/device')
+def get_device_info():
+    api = get_api_handle(request)
+    devices = api.user_get_device()
+    return json.dumps([[d.type, d.model, d.battery] for d in devices.devices])

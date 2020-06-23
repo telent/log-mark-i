@@ -9,6 +9,9 @@ var divTooltip = d3.select("body").append("div")
     .attr("class", "tooltip")
     .style("opacity", 0);
 
+var divBattery = d3.select("body").append("div")
+    .attr("class", "battery");
+
 var xScale = d3.scaleTime();
 var yScale = d3.scaleLinear();
 var fatScale = d3.scaleLinear();
@@ -298,6 +301,17 @@ function debounce(event, f) {
 
 debounce('resize', refresh_view);
 debounce('orientationchange', refresh_view);
+
+function updateBattery(devices) {
+    var [deviceClass, model, battery] = devices[0];
+    divBattery.html(model + " " + deviceClass +
+		    ": " + battery + " battery");
+}
+
+d3.json("/device").then(updateBattery);
+window.setInterval(() => { d3.json("/device").then(updateBattery) },
+		   10*60*1000);
+
 
 refreshButton.on('click', reload_data);
 reload_data();

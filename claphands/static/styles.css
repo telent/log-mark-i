@@ -77,6 +77,17 @@ div.flash {
     border-radius: 3px;
     position: relative;
 }
+
+div.battery {
+    background-color: black;
+    padding: 4px 8px;
+    border: 2px solid #228822;
+    border-radius: 3px;
+    position: absolute;
+    left: 1em; top:1em;
+    color: #44aa44;
+}
+
 div.flash button {
     position: absolute;
     bottom: 2em;

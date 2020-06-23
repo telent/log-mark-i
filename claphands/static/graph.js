@@ -172,6 +172,7 @@ function refresh_view() {
         .datum(data)
         .attr("class", "invisibleLine")
         .attr("d", weightLine)
+	.attr("stroke-linecap", "round")
 	.on("mouseover", () => { gDots.attr("visibility", "visible") })
 	.on("mouseleave", () => { gDots.attr("visibility", "hidden") })
         .on("mousemove", mousemove_cb);
@@ -179,6 +180,7 @@ function refresh_view() {
         .datum(data)
         .attr("class", "invisibleLine")
         .attr("d", fatLine)
+	.attr("stroke-linecap", "round")
 	.on("mouseover", () => { gFatDots.attr("visibility", "visible")	})
 	.on("mouseleave", () => { gFatDots.attr("visibility", "hidden")	})
         .on("mousemove", mousemove_cb);

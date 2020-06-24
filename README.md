@@ -1,9 +1,11 @@
-# Clap Hands
+# Log Mark I
 
-> If you're API and you know weight, clap your hands.
+* Displays a graph of logged measures from my (or your) Withings Body Scale
+
+* An anagram of "kilogram"
 
 If you have a Withings wireless scale and you're not impressed with
-the Healthmate web ui, you might find this a bit prettier/more usable.
+the Healthmate web ui, you might find this a bit more usable.
 
 ![Screenshot](screenshot.png)
 

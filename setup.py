@@ -7,7 +7,7 @@ def requirements():
         return json.load(fh)
 
 setup(
-    name='claphands',
+    name='logmarki',
     version='0.1.0',
     packages=find_packages(),
     include_package_data=True,

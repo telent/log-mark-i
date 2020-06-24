@@ -12,8 +12,8 @@ from oauthlib.oauth2.rfc6749.errors import MissingTokenError
 
 from flask import Flask, redirect, request, make_response, Response, render_template, Blueprint
 
-from claphands.credentials import get_credential_store
-from claphands.withings import get_withings_auth, get_results
+from logmarki.credentials import get_credential_store
+from logmarki.withings import get_withings_auth, get_results
 
 bp = Blueprint('homepage', __name__, url_prefix='/')
 

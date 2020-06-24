@@ -5,7 +5,7 @@ from flask import current_app, g, Blueprint, request, make_response, redirect
 from withings_api import WithingsAuth, AuthScope
 from withings_api.common import MeasureType, query_measure_groups
 
-from claphands.credentials import get_credential_store
+from logmarki.credentials import get_credential_store
 
 def withings_auth(config):
     return WithingsAuth(

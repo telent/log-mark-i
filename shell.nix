@@ -1,7 +1,7 @@
 with import <nixpkgs> {};
 let pypkgs = with python38Packages; [ pip pylint setuptools pyyaml flask gunicorn ]; in
 stdenv.mkDerivation rec {
-  pname = "clap-hands";
+  pname = "log-mark-i";
   version = "1";
   src = ./.;
   shellHook = "export PYTHONPATH=$HOME/.local/lib/python3.8/site-packages:$PYTHONPATH; export PATH=$HOME/.local/bin:$PATH";

@@ -34,7 +34,7 @@ the Client Id and Consumer Secret they provide you with, and create a
 {
     "WITHINGS_CLIENT_ID": "58cd5442c76439c754e8172e452d184a7c69a2ef2c5d8e71c3db3815f7f4245e",
     "WITHINGS_CONSUMER_SECRET": "ebbe0a47dd30efdb7aa8e6692b65b0610318523a649b8b28465502d8aa5a"
-    "WITHINGS_CALLBACK": "https://clap-hands.example.com/withings/callback",
+    "WITHINGS_CALLBACK": "https://log-mark-i.example.com/withings/callback",
 }
 ```
 
@@ -43,13 +43,13 @@ the Client Id and Consumer Secret they provide you with, and create a
 If you are installing onto a machine (or container) that has other
 things on it, you probably want to be using a virtualenv
 
-    git clone https://github.com/telent/clap-hands.git
-    cd clap-hands
+    git clone https://github.com/telent/log-mark-i.git
+    cd log-mark-i
     python -m venv venv
     . venv/bin/activate
     pip install .
     # copy config.json into ./instance
-    gunicorn 'claphands:create_app()'
+    gunicorn 'logmarki:create_app()'
 
 ### system-wide
 
@@ -58,9 +58,9 @@ python install
 
 You *should* be able to run
 
-    python -m pip install git+https://github.com/telent/clap-hands.git
-    # copy config.json into /usr/var/claphands-instance/config.json
-    gunicorn 'claphands:create_app()'
+    python -m pip install git+https://github.com/telent/log-mark-i.git
+    # copy config.json into /usr/var/logmarki-instance/config.json
+    gunicorn 'logmarki:create_app()'
 
 ## HTTPS
 

@@ -49,7 +49,7 @@ things on it, you probably want to be using a virtualenv
     cd log-mark-i
     python -m venv venv
     . venv/bin/activate
-    pip install .
+    python -m pip install .
     # copy config.json into ./instance
     gunicorn 'logmarki:create_app()'
 
@@ -64,6 +64,25 @@ You *should* be able to run
     # copy config.json into /usr/var/logmarki-instance/config.json
     gunicorn 'logmarki:create_app()'
 
+### With Nix (if you already understand Nix)
+
+Have a look at `default.nix` and see if it looks good for you.  It
+depends on the generated files `requirements.nix` and
+`requirements_override.nix`, which if you're lucky you can regenerate
+as follows:
+
+(As of June 2020 this procecure is said to require an unstable version
+of Nixpkgs, which is why I have the custom NIX_PATH settings)
+
+    python -m venv venv
+    . venv/bin/activate
+    python -m pip install -r requirements.txt
+    python -m pip freeze | sed  's/logmarki/d' '/log-mark-i/d' > frozen.txt
+    echo 'logmarki=0.1.0' >> frozen.txt
+    NIX_PATH=nixpkgs=../nixpkgs nix run nixpkgs.pypi2nix -c pypi2nix -r frozen.txt
+    NIX_PATH=nixpkgs=../nixpkgs nix-build .
+
+
 ## HTTPS
 
 You will need to create a proxy pointing at it so that you can access
@@ -75,7 +94,7 @@ to edit the call to `response.set_cookie` to remove `secure=True`
 
 If you're actively hacking on it,
 
-    python -m flask run --host=0.0.0.0 --port=5007
+    FLASK_APP='logmarki:create_app()' FLASK_ENV=development python -m flask run --host=0.0.0.0 --port=5007
 
 This is my first time writing Python *and* my first time using d3.js,
 so the code style may be weird, nonidiomatic, inconsistent, or just

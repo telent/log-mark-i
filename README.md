@@ -77,7 +77,7 @@ of Nixpkgs, which is why I have the custom NIX_PATH settings)
     python -m venv venv
     . venv/bin/activate
     python -m pip install -r requirements.txt
-    python -m pip freeze | sed  's/logmarki/d' '/log-mark-i/d' > frozen.txt
+    python -m pip freeze | sed -e 's/logmarki/d' -e '/log-mark-i/d' > frozen.txt
     echo 'logmarki=0.1.0' >> frozen.txt
     NIX_PATH=nixpkgs=../nixpkgs nix run nixpkgs.pypi2nix -c pypi2nix -r frozen.txt
     NIX_PATH=nixpkgs=../nixpkgs nix-build .

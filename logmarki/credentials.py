@@ -1,6 +1,7 @@
 from flask import current_app, g
-from os import path
+from os import path, rename, remove
 import pickle
+from filelock import Timeout, FileLock
 
 class CredentialStore:
     def __init__(self, pathname):
@@ -15,13 +16,18 @@ class CredentialStore:
         return self.data.get(key, default) if key else default
 
     def update(self, key, value):
-        # need locking here to protect against simultaneous updates
-        print("updating credentials for ", key)
-        self.data[key] = value
-        credsfile = open(self.pathname, "wb")
-        pickle.dump(self.data, credsfile)
-        credsfile.close()
-
+        tmpname = self.pathname + ".new"
+        lockname = self.pathname + ".lock"
+        try:
+            with FileLock(lockname, timeout = 5):
+                with open(tmpname, "wb") as file:
+                    print("updating credentials for", key)
+                    self.data[key] = value
+                    pickle.dump(self.data, file)
+                    file.close()
+                    rename(tmpname, self.pathname)
+        finally:
+            remove(lockname)
 
 def get_credential_store():
     if 'credential_store' not in g:

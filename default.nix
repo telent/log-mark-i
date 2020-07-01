@@ -9,11 +9,10 @@ let
     propagatedBuildInputs = builtins.attrValues python.packages;
     # I use this with a systemd unit that runs
     #
-    #   INSTANCE_PATH=/etc/log-mark-i
-    #   ${python.interpreter}/bin/gunicorn 'logmarki:create_app()'
+    #   INSTANCE_PATH=/var/lib/log-mark-i
+    #   GUNICORN_CMD_ARGS="--bind=127.0.0.1:5007"
+    #   ${logmarki}/bin/log-mark-i-server
     #
-    # I elected not to put the config file in /nix/store because it
-    # contains oauth2 secrets so maybe doesn't want to be world-readable.
   }; in
 pkgs.writers.writeBashBin "log-mark-i-server" ''
   export PYTHONPATH=${logmarki_pkg}/lib/python3.7/site-packages/:$PYTHONPATH

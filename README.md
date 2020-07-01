@@ -66,22 +66,34 @@ You *should* be able to run
 
 ### With Nix (if you already understand Nix)
 
-Have a look at `default.nix` and see if it looks good for you.  It
-depends on the generated files `requirements.nix` and
-`requirements_override.nix`, which if you're lucky you can regenerate
-as follows:
+`default.nix` builds log-mark-i as a Python module and creates a
+two-line shell script to start the server. Howver it won't run
+usefully unless you set the `INSTANCE_PATH` environment variable to
+the name of a directory which (1) contains `config.json`; (2) is
+writable by the user that runs the script.
 
-(As of June 2020 this procecure is said to require an unstable version
+I install it using a NixOS module roughly along the lines of
+`nixos-module.example.nix`
+
+#### Regenerating the Nix dependencies
+
+The Nix packaging depends on the generated files `requirements.nix`
+and `requirements_override.nix`, which if you're lucky you can
+regenerate as follows:
+
+(As of July 2020 this procedure is said to require an unstable version
 of Nixpkgs, which is why I have the custom NIX_PATH settings)
 
-    python -m venv venv
-    . venv/bin/activate
-    python -m pip install -r requirements.txt
-    python -m pip freeze | sed -e 's/logmarki/d' -e '/log-mark-i/d' > frozen.txt
-    echo 'logmarki=0.1.0' >> frozen.txt
-    NIX_PATH=nixpkgs=../nixpkgs nix run nixpkgs.pypi2nix -c pypi2nix -r frozen.txt
-    NIX_PATH=nixpkgs=../nixpkgs nix-build .
-
+```
+NIX_PATH=nixpkgs=../nixpkgs nix run nixpkgs.python38 -c bash << EOF
+   python -m venv venv
+   . venv/bin/activate
+   python -m pip install -r requirements.txt
+   python -m pip freeze | sed -e '/logmarki/d' -e '/log-mark-i/d' > frozen.txt
+   echo 'logmarki=0.1.0' >> frozen.txt
+EOF
+NIX_PATH=nixpkgs=../nixpkgs nix run nixpkgs.pypi2nix -c pypi2nix -r frozen.txt
+```
 
 ## HTTPS
 
@@ -89,6 +101,7 @@ You will need to create a proxy pointing at it so that you can access
 it with HTTPS: I did this with Nginx, but ngrok or something else
 would work just as well.  If you don't/won't/can't use HTTPS you need
 to edit the call to `response.set_cookie` to remove `secure=True`
+
 
 ## Development
 

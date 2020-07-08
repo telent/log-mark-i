@@ -130,6 +130,11 @@ function refresh_view() {
         .domain(d3.extent(data, d => d.fat_ratio))
         .nice();
 
+
+    var gStripes = svg
+        .insert('g', ':first-child')
+        .attr('class', 'stripes');
+
     var xAxis = d3.axisBottom(xScale);
     var gx = svg.insert("g", ":first-child")
         .attr("transform", "translate(0," + height + ")")
@@ -164,6 +169,17 @@ function refresh_view() {
         .attr("class", "fatLine")
         .attr("d", fatLine);
 
+    gStripes.selectAll(".weekend")
+	.data(xScale.ticks(d3.timeWeek).map(d=>d3.timeSaturday(d)))
+	.enter()
+	.append("rect")
+	.attr("x",
+	      d => xScale(d))
+	.attr("y", 0)
+	.attr("width",
+	      d => xScale(d3.timeMonday.ceil(d)) - xScale(d))
+	.attr("height", -yScale(height))
+
     function mousemove_cb() {
         var [x,y] = d3.mouse(d3.event.target);
         var index = nearest_measure(data, xScale.invert(x));
@@ -179,6 +195,7 @@ function refresh_view() {
 	.on("mouseover", () => { gDots.attr("visibility", "visible") })
 	.on("mouseleave", () => { gDots.attr("visibility", "hidden") })
         .on("mousemove", mousemove_cb);
+
     svg.append("path")
         .datum(data)
         .attr("class", "invisibleLine")
@@ -229,6 +246,7 @@ function refresh_view() {
         xAxis.scale(newScale);
         gx.call(xAxis);
         weightLine.x(function (d) { return newScale(d.date); });
+	gStripes.selectAll("g.stripes rect").attr('x', d => newScale(d));
         fatLine.x(function (d) { return newScale(d.date); });
         svg.select("path.weightLine").attr("d", weightLine);
         svg.select("path.fatLine").attr("d", fatLine);

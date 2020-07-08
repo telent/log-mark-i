@@ -3,6 +3,11 @@
     stroke: #ffab00;
     stroke-width: 3;
 }
+.stripes rect {
+    fill: #ffaa00;
+    opacity: 0.2;
+}
+
 .xaxis {
     stroke: black;
 }

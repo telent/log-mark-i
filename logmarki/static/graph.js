@@ -192,11 +192,9 @@ function refresh_view() {
 	.data(xScale.ticks(d3.timeWeek).map(d=>d3.timeSaturday(d)))
 	.enter()
 	.append("rect")
-	.attr("x",
-	      d => xScale(d))
+	.attr("x", d => xScale(d))
 	.attr("y", 0)
-	.attr("width",
-	      d => xScale(d3.timeMonday.ceil(d)) - xScale(d))
+	.attr("width", d => xScale(d3.timeMonday.ceil(d)) - xScale(d))
 	.attr("height", -yScale(height))
 
     var gDots = svg
@@ -208,9 +206,9 @@ function refresh_view() {
         .data(data)
         .enter().append("circle")
         .attr("class", "dot")
-        .attr("cx", function(d) { return xScale(d.date) })
-        .attr("cy", function(d) { return yScale(d.weight) })
-        .attr("opacity", function(d) { return d.intensity; })
+        .attr("cx", d => xScale(d.date))
+        .attr("cy", d => yScale(d.weight))
+        .attr("opacity", d => d.intensity)
         .attr("r", 5);
 
     var gFatDots = svg
@@ -222,18 +220,15 @@ function refresh_view() {
         .data(data)
         .enter().append("rect")
         .attr("class", "fatdot")
-        .attr("x", function(d) { return xScale(d.date)-4; })
-        .attr("y", function(d) {
-	    return fatScale(d.fat_ratio)-4;
-	})
-        .attr("opacity", function(d) { return d.intensity; })
+        .attr("x", d => xScale(d.date)-4)
+        .attr("y", d => fatScale(d.fat_ratio)-4)
+        .attr("opacity", d => d.intensity)
         .attr("width", 8)
 	.attr("height", 8);
 
-    attrs_for_invisible_line(svg.append("path").datum(data),
-			     weightLine, gDots);
-    attrs_for_invisible_line(svg.append("path").datum(data),
-			     fatLine, gFatDots);
+    attrs_for_invisible_line(svg.append("path").datum(data), weightLine, gDots);
+    attrs_for_invisible_line(svg.append("path").datum(data), fatLine, gFatDots);
+
     var zoom = d3.zoom()
         .on("zoom", zooming)
         .on("end", zoomed);
@@ -243,13 +238,13 @@ function refresh_view() {
         var newScale = transform.rescaleX(xScale);
         xAxis.scale(newScale);
         gx.call(xAxis);
-        weightLine.x(function (d) { return newScale(d.date); });
+        weightLine.x(d => newScale(d.date));
 	gStripes.selectAll("g.stripes rect").attr('x', d => newScale(d));
-        fatLine.x(function (d) { return newScale(d.date); });
+        fatLine.x(d => newScale(d.date));
         svg.select("path.weightLine").attr("d", weightLine);
         svg.select("path.fatLine").attr("d", fatLine);
-        dots.attr('cx', function(d) { return newScale(d.date); })
-	fatDots.attr('x', function(d) { return newScale(d.date)-3; })
+        dots.attr('cx', d => newScale(d.date));
+	fatDots.attr('x', d => newScale(d.date)-3);
     };
     function zoomed() {
         var transform = d3.event.transform;

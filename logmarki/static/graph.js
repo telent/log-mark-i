@@ -75,6 +75,32 @@ function popupForMeasure(index, datum, x, y)
         .style("top", (y - 50) + "px");
 }
 
+function mousemove_cb() {
+    var [x,y] = d3.mouse(d3.event.target);
+    var index = nearest_measure(data, xScale.invert(x));
+    if(index<0) index=0;
+    popupForMeasure(index, data[index], x, y);
+};
+
+function lineForMeasure(scale, key) {
+    return d3.line()
+        .x(d => xScale(d.date))
+        .y(d => scale(d[key]))
+        .curve(d3.curveBasis)
+}
+
+function attrs_for_invisible_line(path, line, dots_selection) {
+    path.attr("class", "invisibleLine")
+        .attr("d", line)
+	.attr("stroke-linecap", "round")
+	.on("mouseover",
+	    () => { dots_selection.attr("visibility", "visible") })
+	.on("mouseleave",
+	    () => { dots_selection.attr("visibility", "hidden") })
+        .on("mousemove", mousemove_cb);
+}
+
+
 function refresh_view() {
     width = window.innerWidth - margin.left - margin.right;
     height = window.innerHeight - margin.top - margin.bottom;
@@ -130,12 +156,12 @@ function refresh_view() {
         .domain(d3.extent(data, d => d.fat_ratio))
         .nice();
 
-
     var gStripes = svg
         .insert('g', ':first-child')
         .attr('class', 'stripes');
 
     var xAxis = d3.axisBottom(xScale);
+
     var gx = svg.insert("g", ":first-child")
         .attr("transform", "translate(0," + height + ")")
         .call(xAxis);
@@ -149,15 +175,8 @@ function refresh_view() {
         .attr("transform", "translate(" + width + ",0)")
         .call(d3.axisRight(fatScale));
 
-    var weightLine = d3.line()
-        .x(d => xScale(d.date))
-        .y(d => yScale(d.weight_trend))
-        .curve(d3.curveBasis);
-
-    var fatLine = d3.line()
-        .x(d => xScale(d.date))
-        .y(d => fatScale(d.fat_trend))
-        .curve(d3.curveBasis)
+    var weightLine = lineForMeasure(yScale, 'weight_trend')
+    var fatLine = lineForMeasure(fatScale, 'fat_trend')
 
     svg.insert("path", ":first-child")
         .datum(data)
@@ -179,31 +198,6 @@ function refresh_view() {
 	.attr("width",
 	      d => xScale(d3.timeMonday.ceil(d)) - xScale(d))
 	.attr("height", -yScale(height))
-
-    function mousemove_cb() {
-        var [x,y] = d3.mouse(d3.event.target);
-        var index = nearest_measure(data, xScale.invert(x));
-        if(index<0) index=0;
-        popupForMeasure(index, data[index], x, y);
-    };
-
-    svg.append("path")
-        .datum(data)
-        .attr("class", "invisibleLine")
-        .attr("d", weightLine)
-	.attr("stroke-linecap", "round")
-	.on("mouseover", () => { gDots.attr("visibility", "visible") })
-	.on("mouseleave", () => { gDots.attr("visibility", "hidden") })
-        .on("mousemove", mousemove_cb);
-
-    svg.append("path")
-        .datum(data)
-        .attr("class", "invisibleLine")
-        .attr("d", fatLine)
-	.attr("stroke-linecap", "round")
-	.on("mouseover", () => { gFatDots.attr("visibility", "visible")	})
-	.on("mouseleave", () => { gFatDots.attr("visibility", "hidden")	})
-        .on("mousemove", mousemove_cb);
 
     var gDots = svg
         .append('g')    // after the listener
@@ -236,6 +230,10 @@ function refresh_view() {
         .attr("width", 8)
 	.attr("height", 8);
 
+    attrs_for_invisible_line(svg.append("path").datum(data),
+			     weightLine, gDots);
+    attrs_for_invisible_line(svg.append("path").datum(data),
+			     fatLine, gFatDots);
     var zoom = d3.zoom()
         .on("zoom", zooming)
         .on("end", zoomed);

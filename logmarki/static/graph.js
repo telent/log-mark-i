@@ -100,6 +100,12 @@ function attrs_for_invisible_line(path, line, dots_selection) {
         .on("mousemove", mousemove_cb);
 }
 
+function setScale(scale, attribute) {
+    scale
+        .range([height, 0])
+        .domain(d3.extent(data, d => d[attribute]))
+        .nice();
+}
 
 function refresh_view() {
     width = window.innerWidth - margin.left - margin.right;
@@ -147,14 +153,8 @@ function refresh_view() {
         d.weight_trend = earlier.weight;
     });
 
-    yScale
-        .range([height, 0])
-        .domain(d3.extent(data, d => d.weight))
-        .nice();
-    fatScale
-        .range([height, 0])
-        .domain(d3.extent(data, d => d.fat_ratio))
-        .nice();
+    setScale(yScale, "weight");
+    setScale(fatScale, "fat_ratio");
 
     var gStripes = svg
         .insert('g', ':first-child')

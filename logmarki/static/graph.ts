@@ -1,3 +1,5 @@
+declare var d3: any;
+
 var margin = {top: 50, right: 50, bottom: 50, left: 50}
 , width = window.innerWidth - margin.left - margin.right // Use the window's width
 , height = window.innerHeight - margin.top - margin.bottom; // Use the window's height
@@ -202,7 +204,7 @@ function refresh_view() {
 	.attr("visibility", "hidden")
         .attr('class', 'dots-group');
 
-    dots = gDots.selectAll(".dot")
+    var dots = gDots.selectAll(".dot")
         .data(data)
         .enter().append("circle")
         .attr("class", "dot")
@@ -216,7 +218,7 @@ function refresh_view() {
 	.attr("visibility", "hidden")
         .attr('class', 'fat-dots-group');
 
-    fatDots = gFatDots.selectAll(".fatdot")
+    var fatDots = gFatDots.selectAll(".fatdot")
         .data(data)
         .enter().append("rect")
         .attr("class", "fatdot")
@@ -261,7 +263,7 @@ function refresh_view() {
     listenerRect.call(zoom);
 }
 
-function nearest_measure(data, timestamp, s, e)
+function nearest_measure(data, timestamp, s?, e?)
 {
     // find oldest element newer than timestamp in the array
     // of data, noting that data is ordered most-recent-first

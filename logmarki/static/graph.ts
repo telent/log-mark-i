@@ -29,8 +29,8 @@ var refreshButton = d3.select("body").append("img")
     .attr("class", "iconify refresh")
     .attr("src", "/static/refresh.svg");
 
-var timeNow = new Date("2020-05-17");
-var dateExtent = [d3.timeDay.offset(timeNow, -14),
+var timeNow = new Date();
+var dateExtent = [d3.timeDay.offset(timeNow, -60),
                   timeNow];
 
 interface MeasureJson {
@@ -131,29 +131,9 @@ function setScale(scale, attribute) {
         .nice();
 }
 
-function refresh_view() {
-    width = window.innerWidth - margin.left - margin.right;
-    height = window.innerHeight - margin.top - margin.bottom;
-
-    svg.selectAll('*').remove();
-    var listenerRect = svg.append('rect')
-        .attr('class', 'listener-rect')
-        .attr('x', 0)
-        .attr('y', -margin.top)
-        .attr('width', window.innerWidth)
-        .attr('height', height + margin.top + margin.bottom)
-        .style('opacity', 0);
-
-    svg
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom);
-
-    xScale
-        .range([0, width])
-        .domain(dateExtent);
-
+function augmentRawData(rawData) {
     let earlier = null, lambda = 0.10/86400000;
-    data = rawData.map(function(raw, i) {
+    return rawData.map(function(raw, i) {
 	let d : any = {
             date: parseTime(raw.date),
 	    weight: raw.weight,
@@ -182,6 +162,30 @@ function refresh_view() {
         d.weight_trend = earlier.weight_trend;
 	return <Measure> d;
     });
+}
+
+function refresh_view() {
+    width = window.innerWidth - margin.left - margin.right;
+    height = window.innerHeight - margin.top - margin.bottom;
+
+    svg.selectAll('*').remove();
+    var listenerRect = svg.append('rect')
+        .attr('class', 'listener-rect')
+        .attr('x', 0)
+        .attr('y', -margin.top)
+        .attr('width', window.innerWidth)
+        .attr('height', height + margin.top + margin.bottom)
+        .style('opacity', 0);
+
+    svg
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom);
+
+    xScale
+        .range([0, width])
+        .domain(dateExtent);
+
+    data = augmentRawData(rawData);
 
     setScale(yScale, "weight");
     setScale(fatScale, "fat_ratio");

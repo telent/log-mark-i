@@ -3,3 +3,9 @@ secrets.json
 __pycache__/
 *~
 node_modules/
+bundle.js
+venv/
+dist/
+*.d.ts
+instance/
+result

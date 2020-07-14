@@ -1,4 +1,4 @@
-declare var d3: any;
+import * as d3 from 'd3';
 
 var margin = {top: 50, right: 50, bottom: 50, left: 50}
 , width = window.innerWidth - margin.left - margin.right // Use the window's width
@@ -29,11 +29,32 @@ var refreshButton = d3.select("body").append("img")
     .attr("class", "iconify refresh")
     .attr("src", "/static/refresh.svg");
 
-var timeNow = new Date();
-var dateExtent = [d3.timeDay.offset(timeNow, -60),
+var timeNow = new Date("2020-05-17");
+var dateExtent = [d3.timeDay.offset(timeNow, -14),
                   timeNow];
 
-var data;
+interface MeasureJson {
+    date: string;
+    weight: number;
+    fat_mass_weight: number;
+    fat_free_mass: number;
+    fat_ratio: number;
+}
+
+interface Measure {
+    date: Date;
+    weight: number;
+    weight_trend: number;
+    fat_mass_weight: number;
+    fat_free_mass: number;
+    fat_ratio: number;
+    fat_trend: number;
+    intensity: number;
+}
+
+
+var data : Measure[];
+var rawData: MeasureJson[];
 
 function promptForReloadPage(message) {
     d3.select("body").insert("div", ":first-child")
@@ -48,7 +69,7 @@ function promptForReloadPage(message) {
 function reload_data() {
     let [startDate, endDate] = dateExtent.map(d => d.getTime());
     d3.json("/weights.json?start=" + startDate + "&end=" +endDate)
-        .then(payload => { data = payload; refresh_view();})
+        .then(payload => { rawData = <MeasureJson[]>payload; refresh_view();})
 	.catch(err => {
 	    if(err.message.startsWith("403")) promptForReloadPage(err.message);
 	});
@@ -85,7 +106,8 @@ function mousemove_cb() {
 };
 
 function lineForMeasure(scale, key) {
-    return d3.line()
+    return d3.line<Measure>()
+	.defined(d => !isNaN(d[key]))
         .x(d => xScale(d.date))
         .y(d => scale(d[key]))
         .curve(d3.curveBasis)
@@ -122,8 +144,6 @@ function refresh_view() {
         .attr('height', height + margin.top + margin.bottom)
         .style('opacity', 0);
 
-    let earlier = null, lambda = 0.10/86400000;
-
     svg
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom);
@@ -131,14 +151,21 @@ function refresh_view() {
     xScale
         .range([0, width])
         .domain(dateExtent);
-    data.forEach(function(d, i) {
-        d.date = parseTime(d.date);
+
+    let earlier = null, lambda = 0.10/86400000;
+    data = rawData.map(function(raw, i) {
+	let d : any = {
+            date: parseTime(raw.date),
+	    weight: raw.weight,
+            fat_ratio: raw.fat_ratio || earlier.fat_trend,
+	};
         if(earlier) {
             let lag = earlier.date - d.date, // milliseconds
-                m = Math.exp(-lag*lambda);
-            earlier.weight = (1-m)*d.weight + (m)*earlier.weight
-            d.fat_ratio = d.fat_ratio || earlier.fat_ratio;
-            earlier.fat_ratio = (1-m)*d.fat_ratio + (m)*earlier.fat_ratio;
+		m = Math.exp(-lag*lambda);
+            earlier.weight_trend = (1-m)*raw.weight
+		+ (m)*earlier.weight_trend;
+            earlier.fat_trend = (1-m)*d.fat_ratio
+		+ (m)*earlier.fat_trend;
             // lag is ms since last point. we want to make intensity 0
             // if this point will be too close to the previous point
             // (overlapping or touching)
@@ -147,12 +174,13 @@ function refresh_view() {
             else
                 d.intensity = 0.2;
         } else {
-            earlier = { weight: d.weight, fat_ratio: d.fat_ratio };
+            earlier = { weight_trend: d.weight, fat_trend: d.fat_ratio };
             d.intensity = 1;
         }
         earlier.date = d.date;
-        d.fat_trend = earlier.fat_ratio;
-        d.weight_trend = earlier.weight;
+        d.fat_trend = earlier.fat_trend;
+        d.weight_trend = earlier.weight_trend;
+	return <Measure> d;
     });
 
     setScale(yScale, "weight");
@@ -181,14 +209,12 @@ function refresh_view() {
     var fatLine = lineForMeasure(fatScale, 'fat_trend')
 
     svg.insert("path", ":first-child")
-        .datum(data)
         .attr("class", "weightLine")
-        .attr("d", weightLine);
+        .attr("d", weightLine(data));
 
     svg.insert("path", ":first-child")
-        .datum(data)
         .attr("class", "fatLine")
-        .attr("d", fatLine);
+        .attr("d", fatLine(data));
 
     gStripes.selectAll(".weekend")
 	.data(xScale.ticks(d3.timeWeek).map(d=>d3.timeSaturday(d)))
@@ -240,11 +266,11 @@ function refresh_view() {
         var newScale = transform.rescaleX(xScale);
         xAxis.scale(newScale);
         gx.call(xAxis);
-        weightLine.x(d => newScale(d.date));
 	gStripes.selectAll("g.stripes rect").attr('x', d => newScale(d));
+        weightLine.x(d => newScale(d.date));
         fatLine.x(d => newScale(d.date));
-        svg.select("path.weightLine").attr("d", weightLine);
-        svg.select("path.fatLine").attr("d", fatLine);
+        svg.select("path.weightLine").attr("d", weightLine(data));
+        svg.select("path.fatLine").attr("d", fatLine(data));
         dots.attr('cx', d => newScale(d.date));
 	fatDots.attr('x', d => newScale(d.date)-3);
     };

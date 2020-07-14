@@ -1,0 +1,11 @@
+{
+				"private": true,
+				"dependencies": {
+								"@types/d3": "^5.7.2",
+								"d3": "^5.16.0",
+								"ts-loader": "^8.0.0",
+								"typescript": "^3.9.6",
+								"webpack": "^4.43.0",
+								"webpack-cli": "^3.3.12"
+				}
+}

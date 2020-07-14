@@ -2,7 +2,7 @@ const path = require('path');
 
 module.exports = {
     entry: './logmarki/static/graph.ts',
-    devtool: 'inline-source-map',
+    devtool: process.env.WEBPACK_SOURCE_MAP ? 'inline-source-map' : false,
     mode: 'production',
     module: {
 	rules: [

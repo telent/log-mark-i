@@ -4,6 +4,7 @@ in stdenv.mkDerivation {
   name = "log-mark-i-env";
   buildInputs = [ python.interpreter
                   nodejs ];
+  WEBPACK_SOURCE_MAP = true;
   shellHook  = ''
 PATH=./node_modules/.bin:$PATH
 '';

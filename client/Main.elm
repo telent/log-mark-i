@@ -28,32 +28,34 @@ padding : Float
 padding =
     30
 
+type alias Measure = ( Time.Posix, Float )
 
-xScale : List ( Time.Posix, Float ) -> ContinuousScale Time.Posix
+xScale : List Measure -> ContinuousScale Time.Posix
 xScale model =
-    let getTime = Tuple.first >> Time.posixToMillis
-        latest = List.foldl max 0 (List.map getTime model)
-        earliest = List.foldl min latest (List.map getTime model)
+    let times = List.map (Tuple.first >> Time.posixToMillis) model
+        latest = List.foldl max 0 times
+        earliest = List.foldl min latest times
     in
     Scale.time Time.utc ( 0, w - 2 * padding ) ( Time.millisToPosix earliest, Time.millisToPosix latest )
 
-yScale : List ( Time.Posix, Float ) -> ContinuousScale Float
+yScale : List Measure -> ContinuousScale Float
 yScale model =
-    let top = List.foldl max 0 (List.map Tuple.second model)
-        bottom = List.foldl min top (List.map Tuple.second model)
+    let ys = List.map Tuple.second model
+        top = List.foldl max 0 ys
+        bottom = List.foldl min top ys
     in
     Scale.linear ( h - 2 * padding, 0 ) ( bottom, top )
 
-xAxis : List ( Time.Posix, Float ) -> Svg msg
+xAxis : List Measure -> Svg msg
 xAxis model =
     Axis.bottom [ Axis.tickCount 10 ] (xScale model)
 
-yAxis : List ( Time.Posix, Float ) -> Svg msg
+yAxis : List Measure -> Svg msg
 yAxis model =
     Axis.left [ Axis.tickCount 5 ] (yScale model)
 
 
--- line : List ( Time.Posix, Float ) -> Path
+-- line : List Measure -> Path
 line model =
     let transformToLineData (x, y) =
             Just ( Scale.convert (xScale model) x, Scale.convert (yScale model) y )
@@ -80,7 +82,7 @@ line model =
 -- +
 
 
--- area : List ( Time.Posix, Float ) -> Path
+-- area : List Measure -> Path
 area model =
     let xsm = xScale model
         ysm = yScale model
@@ -93,7 +95,7 @@ area model =
         |> Shape.area Shape.monotoneInXCurve
 
 
-view : List ( Time.Posix, Float ) -> Svg msg
+view : List Measure -> Svg msg
 view model =
     svg [ viewBox 0 0 w h ]
         [ g [ transform [ Translate (padding - 1) (h - padding) ] ]

@@ -9,3 +9,8 @@ dist/
 *.d.ts
 instance/
 result
+elm-stuff/
+frozen.txt
+index.html
+logmarki.egg-info/
+package-lock.json

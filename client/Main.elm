@@ -5,7 +5,9 @@ import Axis
 import Browser
 import Color
 import Html exposing (Html, button, div, text)
-
+import Html.Events exposing (onClick)
+import Http
+import Json.Decode as JD exposing (field, Decoder, int, string)
 import Path exposing (Path)
 import Scale exposing (ContinuousScale)
 import Shape
@@ -15,7 +17,7 @@ import TypedSvg.Attributes exposing (class, fill, stroke, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (strokeWidth)
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..), Transform(..))
-
+import Url.Builder as UB
 
 w : Float
 w =
@@ -88,7 +90,6 @@ line model =
 -- +}
 -- +
 
-
 -- area : List Measure -> Path
 area model =
     let xsm = xScale model
@@ -118,20 +119,48 @@ viewSeries series =
         ]
 
 view model =
-    div [] (List.map viewSeries model)
+    div []
+        [ div [] (List.map viewSeries model)
+        , button [ onClick RefreshData ] [ text "( )" ]]
+
 
 timeSeries = List.map (\x -> ((Time.millisToPosix (x*86400*250 + 1458928000000)), toFloat (60 + (modBy 5 x)))) (List.range 1 100)
+
+type Msg
+    = RefreshData
+    | DataReceived (Result Http.Error String)
 
 init : () -> (Model, Cmd Msg)
 init _  = ([ Series Mass timeSeries ], Cmd.none)
 
-type Msg = Ping
+dataDecoder : Decoder String
+dataDecoder = JD.index 0 (field "date" string)
+
+getData : Cmd Msg
+getData =
+    let endDate = 1595189057000
+        startDate = endDate - (86400*1000*30)
+    in
+    Http.get
+        { url = UB.relative [ "/weights.json" ] [ UB.int "start" startDate, UB.int "end" endDate ]
+        , expect = Http.expectJson DataReceived dataDecoder
+        }
+
+updateData model result =
+    case result of
+        Ok data ->
+            let _ = Debug.log "loaded" data
+            in (model, Cmd.none)
+        Err httpError ->
+            let _ = Debug.log "errir"
+            in (model, Cmd.none)
 
 update : Msg -> Model -> (Model, Cmd Msg )
 
-update msg model = (model, Cmd.none)
-
-
+update msg model =
+    case msg of
+        RefreshData -> ( model, getData)
+        DataReceived result -> updateData model result
 main =
     Browser.element
         { init = init

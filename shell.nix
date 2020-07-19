@@ -9,5 +9,8 @@ in stdenv.mkDerivation {
   WEBPACK_SOURCE_MAP = true;
   shellHook  = ''
 PATH=./node_modules/.bin:$PATH
+entr-build() {
+    ls client/Main.elm logmarki/templates/index.html | entr -c elm make client/Main.elm --output=logmarki/static/bundle.js
+}
 '';
 }

@@ -2,7 +2,10 @@ module Main exposing (main)
 
 
 import Axis
+import Browser
 import Color
+import Html exposing (Html, button, div, text)
+
 import Path exposing (Path)
 import Scale exposing (ContinuousScale)
 import Shape
@@ -29,6 +32,10 @@ padding =
     30
 
 type alias Measure = ( Time.Posix, Float )
+type MeasureName = Mass | FatMass | FatRatio
+type alias Series = { name: MeasureName, measures: List Measure  }
+
+type alias Model = List Series
 
 xScale : List Measure -> ContinuousScale Time.Posix
 xScale model =
@@ -94,27 +101,41 @@ area model =
     List.map transfromToAreaData model
         |> Shape.area Shape.monotoneInXCurve
 
+viewSeries : Series -> Svg msg
 
-view : List Measure -> Svg msg
-view model =
+viewSeries series =
+    let {name, measures} = series
+    in
     svg [ viewBox 0 0 w h ]
         [ g [ transform [ Translate (padding - 1) (h - padding) ] ]
-            [ xAxis model ]
+            [ xAxis measures ]
         , g [ transform [ Translate (padding - 1) padding ] ]
-            [ yAxis model ]
+            [ yAxis measures ]
         , g [ transform [ Translate padding padding ], class [ "series" ] ]
-            [ Path.element (area model) [ strokeWidth 3, fill <| Paint <| Color.rgba 1 0 0 0.54 ]
-            , Path.element (line model) [ stroke <| Paint <| Color.rgb 1 0 0, strokeWidth 3, fill PaintNone ]
+            [ Path.element (area measures) [ strokeWidth 3, fill <| Paint <| Color.rgba 1 0 0 0.54 ]
+            , Path.element (line measures) [ stroke <| Paint <| Color.rgb 1 0 0, strokeWidth 3, fill PaintNone ]
             ]
         ]
 
-
-
--- From here onwards this is simply example boilerplate.
--- In a real app you would load the data from a server and parse it, perhaps in
--- a separate module.
+view model =
+    div [] (List.map viewSeries model)
 
 timeSeries = List.map (\x -> ((Time.millisToPosix (x*86400*250 + 1458928000000)), toFloat (60 + (modBy 5 x)))) (List.range 1 100)
 
+init : () -> (Model, Cmd Msg)
+init _  = ([ Series Mass timeSeries ], Cmd.none)
+
+type Msg = Ping
+
+update : Msg -> Model -> (Model, Cmd Msg )
+
+update msg model = (model, Cmd.none)
+
+
 main =
-    view timeSeries
+    Browser.element
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = \_ -> Sub.none
+        }

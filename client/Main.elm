@@ -7,6 +7,7 @@ import Color
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import Http
+import Iso8601
 import Json.Decode as JD exposing (field, Decoder, int, string)
 import Path exposing (Path)
 import Scale exposing (ContinuousScale)
@@ -126,15 +127,20 @@ view model =
 
 timeSeries = List.map (\x -> ((Time.millisToPosix (x*86400*250 + 1458928000000)), toFloat (60 + (modBy 5 x)))) (List.range 1 100)
 
-type Msg
-    = RefreshData
-    | DataReceived (Result Http.Error String)
+type alias MeasureJson =
+    { date : String
+    , mass : Float
+    }
 
-init : () -> (Model, Cmd Msg)
-init _  = ([ Series Mass timeSeries ], Cmd.none)
+             --    let (Ok t) = Iso8601.toTime (field "date" string)
 
-dataDecoder : Decoder String
-dataDecoder = JD.index 0 (field "date" string)
+
+measureDecoder =
+    JD.map2 MeasureJson (field "date" string) (field "weight" JD.float)
+
+dataDecoder : Decoder (List MeasureJson)
+dataDecoder = JD.list measureDecoder
+
 
 getData : Cmd Msg
 getData =
@@ -146,13 +152,20 @@ getData =
         , expect = Http.expectJson DataReceived dataDecoder
         }
 
+type Msg
+    = RefreshData
+    | DataReceived (Result Http.Error (List MeasureJson))
+
+init : () -> (Model, Cmd Msg)
+init _  = ([ Series Mass timeSeries ], Cmd.none)
+
 updateData model result =
     case result of
         Ok data ->
             let _ = Debug.log "loaded" data
             in (model, Cmd.none)
         Err httpError ->
-            let _ = Debug.log "errir"
+            let _ = Debug.log "errir" httpError
             in (model, Cmd.none)
 
 update : Msg -> Model -> (Model, Cmd Msg )

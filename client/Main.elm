@@ -119,8 +119,8 @@ viewSeries series =
             [ yAxis measures ]
         , g [ transform [ Translate padding padding ], class [ "series" ] ]
             [ -- Path.element (area measures) [ strokeWidth 3, fill <| Paint <| Color.rgba 1 0 0 0.54 ]
-              Path.element (line measures) [ stroke <| Paint <| Color.rgb 1 0 0, strokeWidth 3, fill PaintNone ]
-            , Path.element (line (smoothMeasures measures)) [ stroke <| Paint <| Color.rgb 0.4 0.9 0, strokeWidth 3, fill PaintNone ]
+              Path.element (line measures) [ stroke <| Paint <| Color.rgb 1 0 0, strokeWidth 2, fill PaintNone ]
+            , Path.element (line (smoothMeasures measures)) [ stroke <| Paint <| Color.rgb 0.4 0.9 0, strokeWidth 2, fill PaintNone ]
             ]
         ]
 

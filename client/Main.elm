@@ -32,13 +32,18 @@ h =
 
 padding : Float
 padding =
-    30
+    50
 
 type alias Measure = ( Time.Posix, Float )
 type MeasureName = Mass | FatMass | FatRatio
 type alias Series = { name: MeasureName, measures: List Measure  }
 
 type alias Model = List Series
+
+spy a =
+    let _ = Debug.log "spy" a
+    in a
+
 
 xScale : List Measure -> ContinuousScale Time.Posix
 xScale model =
@@ -64,8 +69,7 @@ yAxis : List Measure -> Svg msg
 yAxis model =
     Axis.left [ Axis.tickCount 5 ] (yScale model)
 
-
--- line : List Measure -> Path
+line : List Measure -> Path
 line model =
     let transformToLineData (x, y) =
             Just ( Scale.convert (xScale model) x, Scale.convert (yScale model) y )
@@ -73,25 +77,25 @@ line model =
     List.map transformToLineData model
         |> Shape.line Shape.monotoneInXCurve
 
+smoothMeasures : List Measure -> List Measure
+smoothMeasures measures =
+    let lambda = 0.10/86400000
+        interval later earlier = Time.posixToMillis later - Time.posixToMillis earlier
+        smoothMore (prev_t, prev_y) measures_ =
+            case measures_ of
+                [] -> []
+                m1 :: [] -> [m1]
+                (t, y) :: ms ->
+                    let m = e ^ (-lambda * (toFloat (interval t prev_t)))
+                        newSmooth = (t, (1.0-m) * y + m * prev_y)
+                    in newSmooth :: (smoothMore newSmooth ms)
+        in
+        case measures of
+            [] -> []
+            x :: _ -> (smoothMore x measures)
 
--- exponential moving average, needs translating to elm
--- +type XtPoint = [Date, number];
--- +
--- +function smooth_ema(points : XtPoint[]) : XtPoint[] {
--- +    return points;
--- +    const lambda = 0.10/86400000;
--- +    let [prev_t, smooth_y] = points[0];
--- +    return points.map(d => {
--- +       let [t, y] = d;
--- +       let lag = +t - (+prev_t),
--- +           m = Math.exp(-lambda * lag);
--- +       smooth_y = (1-m) * y + m * smooth_y;
--- +       return [t, smooth_y];
--- +    });
--- +}
--- +
 
--- area : List Measure -> Path
+area : List Measure -> Path
 area model =
     let xsm = xScale model
         ysm = yScale model
@@ -114,8 +118,9 @@ viewSeries series =
         , g [ transform [ Translate (padding - 1) padding ] ]
             [ yAxis measures ]
         , g [ transform [ Translate padding padding ], class [ "series" ] ]
-            [ Path.element (area measures) [ strokeWidth 3, fill <| Paint <| Color.rgba 1 0 0 0.54 ]
-            , Path.element (line measures) [ stroke <| Paint <| Color.rgb 1 0 0, strokeWidth 3, fill PaintNone ]
+            [ -- Path.element (area measures) [ strokeWidth 3, fill <| Paint <| Color.rgba 1 0 0 0.54 ]
+              Path.element (line measures) [ stroke <| Paint <| Color.rgb 1 0 0, strokeWidth 3, fill PaintNone ]
+            , Path.element (line (smoothMeasures measures)) [ stroke <| Paint <| Color.rgb 0.4 0.9 0, strokeWidth 3, fill PaintNone ]
             ]
         ]
 
@@ -124,9 +129,6 @@ view model =
         [ div [] (List.map viewSeries model)
         , button [ onClick RefreshData ] [ text "( )" ]]
 
-
-timeSeries = List.map (\x -> ((Time.millisToPosix (x*86400*250 + 1458928000000)), toFloat (60 + (modBy 5 x)))) (List.range 1 100)
-
 type alias MeasureJson =
     { date : String
     , mass : Float
@@ -134,8 +136,6 @@ type alias MeasureJson =
     , fatRatio : Maybe Float
     , nonFatMass : Maybe Float
     }
-
-
 
 measureDecoder =
     JD.map5 MeasureJson
@@ -151,8 +151,8 @@ dataDecoder = JD.list measureDecoder
 
 getData : Cmd Msg
 getData =
-    let endDate = 1595189057000
-        startDate = endDate - (86400*1000*30)
+    let endDate = 1595189057000 + 15*86400*1000
+        startDate = endDate - (86400*1000*120)
     in
     Http.get
         { url = UB.relative [ "/weights.json" ] [ UB.int "start" startDate, UB.int "end" endDate ]
@@ -172,21 +172,21 @@ parseDate possibleString =
         Err _ -> Time.millisToPosix 0
 
 newModelForJson _ json =
-    [ Series Mass (List.map (\m -> (parseDate m.date, m.mass)) json) ]
-
-spy a =
-    let _ = Debug.log "spy" a in a
+    [ Series Mass (List.map
+                       (\m -> (parseDate m.date, m.mass))
+                       (List.reverse json)) ]
 
 updateData model result =
     case result of
         Ok json ->
-            spy (newModelForJson model json, Cmd.none)
+            (newModelForJson model json, Cmd.none)
         Err httpError ->
             let _ = Debug.log "errir" httpError
             in (model, Cmd.none)
 
-update : Msg -> Model -> (Model, Cmd Msg )
+-- timeSeries = List.map (\x -> ((Time.millisToPosix (x*86400*500 + 1458928000000)),  toFloat (52 +(modBy 5 x)))) (List.range 1 100)
 
+update : Msg -> Model -> (Model, Cmd Msg )
 update msg model =
     case msg of
         RefreshData -> ( model, getData)

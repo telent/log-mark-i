@@ -1,5 +1,6 @@
 from urllib import parse
 import secrets
+import datetime
 
 from flask import current_app, g, Blueprint, request, make_response, redirect
 from withings_api import WithingsAuth, AuthScope
@@ -36,7 +37,7 @@ def get_results(api, startdate, enddate):
     groups = query_measure_groups(meas_result, measure_types)
     out = []
     for group in groups:
-        row = {'date': group.date.format()}
+        row = {'date': group.date.astimezone(datetime.timezone.utc).isoformat()}
         for measure in group.measures:
             row[measure.type.name.lower()] = measure.value * pow(10, measure.unit)
         out.append(row)

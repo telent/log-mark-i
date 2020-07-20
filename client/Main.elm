@@ -130,13 +130,20 @@ timeSeries = List.map (\x -> ((Time.millisToPosix (x*86400*250 + 1458928000000))
 type alias MeasureJson =
     { date : String
     , mass : Float
+    , fatMass : Maybe Float
+    , fatRatio : Maybe Float
+    , nonFatMass : Maybe Float
     }
 
-             --    let (Ok t) = Iso8601.toTime (field "date" string)
 
 
 measureDecoder =
-    JD.map2 MeasureJson (field "date" string) (field "weight" JD.float)
+    JD.map5 MeasureJson
+        (field "date" string)
+        (field "weight" JD.float)
+        (JD.maybe (field "fat_mass_weight" JD.float))
+        (JD.maybe (field "fat_ratio" JD.float))
+        (JD.maybe (field "fat_free_mass" JD.float))
 
 dataDecoder : Decoder (List MeasureJson)
 dataDecoder = JD.list measureDecoder
@@ -157,13 +164,23 @@ type Msg
     | DataReceived (Result Http.Error (List MeasureJson))
 
 init : () -> (Model, Cmd Msg)
-init _  = ([ Series Mass timeSeries ], Cmd.none)
+init _  = ([], getData)
+
+parseDate possibleString =
+    case (Iso8601.toTime possibleString) of
+        Ok val -> val
+        Err _ -> Time.millisToPosix 0
+
+newModelForJson _ json =
+    [ Series Mass (List.map (\m -> (parseDate m.date, m.mass)) json) ]
+
+spy a =
+    let _ = Debug.log "spy" a in a
 
 updateData model result =
     case result of
-        Ok data ->
-            let _ = Debug.log "loaded" data
-            in (model, Cmd.none)
+        Ok json ->
+            spy (newModelForJson model json, Cmd.none)
         Err httpError ->
             let _ = Debug.log "errir" httpError
             in (model, Cmd.none)

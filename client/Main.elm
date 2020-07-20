@@ -19,6 +19,7 @@ import TypedSvg.Attributes.InPx exposing (strokeWidth)
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..), Transform(..))
 import Url.Builder as UB
+import Zoom exposing (OnZoom, Zoom)
 
 w : Float
 w =
@@ -37,8 +38,7 @@ padding =
 type alias Measure = ( Time.Posix, Float )
 type MeasureName = Mass | FatMass | FatRatio
 type alias Series = { name: MeasureName, measures: List Measure  }
-
-type alias Model = List Series
+type alias Model = { series: List Series, zoom: Zoom }
 
 spy a =
     let _ = Debug.log "spy" a
@@ -107,12 +107,15 @@ area model =
     List.map transfromToAreaData model
         |> Shape.area Shape.monotoneInXCurve
 
-viewSeries : Series -> Svg msg
+viewSeries : Zoom -> Series -> Html Msg
 
-viewSeries series =
+viewSeries zoom series =
     let {name, measures} = series
+        attrs = [ viewBox 0 0 w h
+                , Zoom.transform zoom
+                ] ++ (Zoom.events zoom ZoomMsg)
     in
-    svg [ viewBox 0 0 w h ]
+    svg attrs
         [ g [ transform [ Translate (padding - 1) (h - padding) ] ]
             [ xAxis measures ]
         , g [ transform [ Translate (padding - 1) padding ] ]
@@ -124,9 +127,10 @@ viewSeries series =
             ]
         ]
 
+view : Model -> Html Msg
 view model =
     div []
-        [ div [] (List.map viewSeries model)
+        [ div [] (List.map (viewSeries model.zoom) model.series)
         , button [ onClick RefreshData ] [ text "( )" ]]
 
 type alias MeasureJson =
@@ -161,20 +165,27 @@ getData =
 
 type Msg
     = RefreshData
+    | ZoomMsg OnZoom
     | DataReceived (Result Http.Error (List MeasureJson))
 
 init : () -> (Model, Cmd Msg)
-init _  = ([], getData)
+init _  =
+    let z = Zoom.init { width = w - 2 * padding, height = h - 2 * padding }
+    in ({ zoom = z, series = []}, getData)
 
 parseDate possibleString =
     case (Iso8601.toTime possibleString) of
         Ok val -> val
         Err _ -> Time.millisToPosix 0
 
-newModelForJson _ json =
-    [ Series Mass (List.map
-                       (\m -> (parseDate m.date, m.mass))
-                       (List.reverse json)) ]
+newModelForJson model json =
+    let s = [ Series Mass (List.map
+                           (\m -> (parseDate m.date, m.mass))
+                           (List.reverse json)) ]
+    in { zoom = model.zoom
+       , series = s
+       }
+
 
 updateData model result =
     case result of
@@ -191,10 +202,20 @@ update msg model =
     case msg of
         RefreshData -> ( model, getData)
         DataReceived result -> updateData model result
+        ZoomMsg zm ->
+            ( { model
+                  | zoom = Zoom.update (spy zm) model.zoom
+              }
+            , Cmd.none
+            )
+
+subscriptions model =
+    Zoom.subscriptions model.zoom ZoomMsg
+
 main =
     Browser.element
         { init = init
         , view = view
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         }

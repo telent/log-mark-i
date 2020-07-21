@@ -38,55 +38,60 @@ padding =
 type alias Measure = ( Time.Posix, Float )
 type MeasureName = Mass | FatMass | FatRatio
 type alias Series = { name: MeasureName, measures: List Measure  }
-type alias Model = { series: List Series, zoom: Zoom }
+
+type alias Model = { series: List Series
+                   , zoom: Zoom
+                   , dates: (Time.Posix, Time.Posix)  }
 
 spy a =
     let _ = Debug.log "spy" a
     in a
 
 
-xScale : List Measure -> ContinuousScale Time.Posix
+xScale : Model -> ContinuousScale Time.Posix
 xScale model =
-    let times = List.map (Tuple.first >> Time.posixToMillis) model
-        latest = List.foldl max 0 times
-        earliest = List.foldl min latest times
+    let (earliest, latest) = model.dates
     in
-    Scale.time Time.utc ( 0, w - 2 * padding ) ( Time.millisToPosix earliest, Time.millisToPosix latest )
+    Scale.time Time.utc ( 0, w - 2 * padding ) model.dates
 
 yScale : List Measure -> ContinuousScale Float
-yScale model =
-    let ys = List.map Tuple.second model
+yScale measures =
+    let ys = List.map Tuple.second measures
         top = List.foldl max 0 ys
         bottom = List.foldl min top ys
     in
     Scale.linear ( h - 2 * padding, 0 ) ( bottom, top )
 
-xAxis : List Measure -> Svg msg
+xAxis : Model -> Svg msg
 xAxis model =
     Axis.bottom [ Axis.tickCount 10 ] (xScale model)
 
-yAxis : List Measure -> Svg msg
+yAxis : Model -> Svg msg
 yAxis model =
-    Axis.left [ Axis.tickCount 5 ] (yScale model)
+    case model.series of
+        [] -> g [] []
+        series :: _ -> Axis.left [ Axis.tickCount 5 ] (yScale series.measures)
 
-line : List Measure -> Path
-line model =
+line : Model -> List Measure -> Path
+line model measures =
     let transformToLineData (x, y) =
-            Just ( Scale.convert (xScale model) x, Scale.convert (yScale model) y )
+            Just ( Scale.convert (xScale model) x, Scale.convert (yScale measures) y )
     in
-    List.map transformToLineData model
+    List.map transformToLineData measures
         |> Shape.line Shape.monotoneInXCurve
+
+timeInterval later earlier =
+    Time.posixToMillis later - Time.posixToMillis earlier
 
 smoothMeasures : List Measure -> List Measure
 smoothMeasures measures =
     let lambda = 0.10/86400000
-        interval later earlier = Time.posixToMillis later - Time.posixToMillis earlier
         smoothMore (prev_t, prev_y) measures_ =
             case measures_ of
                 [] -> []
                 m1 :: [] -> [m1]
                 (t, y) :: ms ->
-                    let m = e ^ (-lambda * (toFloat (interval t prev_t)))
+                    let m = e ^ (-lambda * (toFloat (timeInterval t prev_t)))
                         newSmooth = (t, (1.0-m) * y + m * prev_y)
                     in newSmooth :: (smoothMore newSmooth ms)
         in
@@ -94,44 +99,30 @@ smoothMeasures measures =
             [] -> []
             x :: _ -> (smoothMore x measures)
 
-
-area : List Measure -> Path
-area model =
-    let xsm = xScale model
-        ysm = yScale model
-        transfromToAreaData ( x, y ) =
-            Just
-            ( ( Scale.convert xsm x, Tuple.first (Scale.rangeExtent ysm) )
-            , ( Scale.convert xsm x, Scale.convert ysm y ))
-    in
-    List.map transfromToAreaData model
-        |> Shape.area Shape.monotoneInXCurve
-
-viewSeries : Zoom -> Series -> Html Msg
-
-viewSeries zoom series =
+viewSeries : Model -> Series -> Svg Msg
+viewSeries model series =
     let {name, measures} = series
-        attrs = [ viewBox 0 0 w h
-                , Zoom.transform zoom
-                ] ++ (Zoom.events zoom ZoomMsg)
     in
-    svg attrs
-        [ g [ transform [ Translate (padding - 1) (h - padding) ] ]
-            [ xAxis measures ]
-        , g [ transform [ Translate (padding - 1) padding ] ]
-            [ yAxis measures ]
-        , g [ transform [ Translate padding padding ], class [ "series" ] ]
-            [ -- Path.element (area measures) [ strokeWidth 3, fill <| Paint <| Color.rgba 1 0 0 0.54 ]
-              Path.element (line measures) [ stroke <| Paint <| Color.rgb 1 0 0, strokeWidth 2, fill PaintNone ]
-            , Path.element (line (smoothMeasures measures)) [ stroke <| Paint <| Color.rgb 0.4 0.9 0, strokeWidth 2, fill PaintNone ]
-            ]
+    g [ transform [ Translate padding padding ], class [ "series" ] ]
+        [ Path.element (line model measures) [ stroke <| Paint <| Color.rgb 1 0 0, strokeWidth 2, fill PaintNone ]
+        , Path.element (line model (smoothMeasures measures)) [ stroke <| Paint <| Color.rgb 0.4 0.9 0, strokeWidth 2, fill PaintNone ]
         ]
 
 view : Model -> Html Msg
 view model =
+    let attrs = [ viewBox 0 0 w h
+                , Zoom.transform model.zoom
+                ] ++ (Zoom.events model.zoom ZoomMsg)
+    in
     div []
-        [ div [] (List.map (viewSeries model.zoom) model.series)
-        , button [ onClick RefreshData ] [ text "( )" ]]
+        [ div []
+              [ svg attrs
+                    ([ g [ transform [ Translate (padding - 1) (h - padding) ] ]
+                          [ xAxis model ]
+                     , g [ transform [ Translate (padding - 1) padding ] ]
+                        [ yAxis model ]] ++
+                     (List.map (viewSeries model) model.series))]]
+
 
 type alias MeasureJson =
     { date : String
@@ -152,14 +143,14 @@ measureDecoder =
 dataDecoder : Decoder (List MeasureJson)
 dataDecoder = JD.list measureDecoder
 
-
-getData : Cmd Msg
-getData =
-    let endDate = 1595189057000 + 15*86400*1000
-        startDate = endDate - (86400*1000*120)
+getData : Model -> Cmd Msg
+getData model =
+    let (startDate, endDate) = model.dates
     in
     Http.get
-        { url = UB.relative [ "/weights.json" ] [ UB.int "start" startDate, UB.int "end" endDate ]
+        { url = UB.relative [ "/weights.json" ]
+              [ UB.int "start" (Time.posixToMillis startDate)
+              , UB.int "end" (Time.posixToMillis endDate) ]
         , expect = Http.expectJson DataReceived dataDecoder
         }
 
@@ -170,8 +161,15 @@ type Msg
 
 init : () -> (Model, Cmd Msg)
 init _  =
-    let z = Zoom.init { width = w - 2 * padding, height = h - 2 * padding }
-    in ({ zoom = z, series = []}, getData)
+    let z = Zoom.init { width = w-2*padding, height = h-2*padding }
+        endDate = 1595189057000 + 15*86400*1000
+        startDate = endDate - (86400*1000*120)
+        model = { zoom = z
+                , series = []
+                , dates = ( Time.millisToPosix startDate
+                          , Time.millisToPosix endDate)
+                }
+    in (model, getData model)
 
 parseDate possibleString =
     case (Iso8601.toTime possibleString) of
@@ -183,6 +181,7 @@ newModelForJson model json =
                            (\m -> (parseDate m.date, m.mass))
                            (List.reverse json)) ]
     in { zoom = model.zoom
+       , dates = model.dates
        , series = s
        }
 
@@ -200,11 +199,21 @@ updateData model result =
 update : Msg -> Model -> (Model, Cmd Msg )
 update msg model =
     case msg of
-        RefreshData -> ( model, getData)
+        RefreshData -> ( model, getData model)
         DataReceived result -> updateData model result
         ZoomMsg zm ->
+            let newZoom = spy (Zoom.update zm model.zoom)
+                scale = (Zoom.asRecord newZoom).scale
+                (startDate, endDate) = model.dates
+                newTimeRange = round (toFloat (timeInterval endDate startDate)/scale)
+            in
+            -- zoom transform has k, x, y where k is magnification from
+            -- initial, x and y seem to be in pixels. we need to use those
+            -- numbers to recalculate start and end date
             ( { model
-                  | zoom = Zoom.update (spy zm) model.zoom
+                  | dates = ( startDate
+                            , Time.millisToPosix
+                                ((Time.posixToMillis startDate) + newTimeRange))
               }
             , Cmd.none
             )

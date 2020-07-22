@@ -47,12 +47,21 @@ spy a =
     let _ = Debug.log "spy" a
     in a
 
+zoomedDates model =
+    let scale = (Zoom.asRecord model.zoom).scale
+        (startDate, endDate) = model.dates
+        startT = Time.posixToMillis startDate
+        endT = Time.posixToMillis endDate
+        midT = toFloat (startT + endT)/2
+        newTimeRange = toFloat (endT - startT)/scale
+    in
+        ( Time.millisToPosix (round (midT - newTimeRange/2))
+        , Time.millisToPosix (round (midT + newTimeRange/2)))
+
 
 xScale : Model -> ContinuousScale Time.Posix
 xScale model =
-    let (earliest, latest) = model.dates
-    in
-    Scale.time Time.utc ( 0, w - 2 * padding ) model.dates
+    Scale.time Time.utc ( 0, w - 2 * padding ) (zoomedDates model)
 
 yScale : List Measure -> ContinuousScale Float
 yScale measures =
@@ -111,7 +120,6 @@ viewSeries model series =
 view : Model -> Html Msg
 view model =
     let attrs = [ viewBox 0 0 w h
-                , Zoom.transform model.zoom
                 ] ++ (Zoom.events model.zoom ZoomMsg)
     in
     div []
@@ -202,21 +210,8 @@ update msg model =
         RefreshData -> ( model, getData model)
         DataReceived result -> updateData model result
         ZoomMsg zm ->
-            let newZoom = spy (Zoom.update zm model.zoom)
-                scale = (Zoom.asRecord newZoom).scale
-                (startDate, endDate) = model.dates
-                newTimeRange = round (toFloat (timeInterval endDate startDate)/scale)
-            in
-            -- zoom transform has k, x, y where k is magnification from
-            -- initial, x and y seem to be in pixels. we need to use those
-            -- numbers to recalculate start and end date
-            ( { model
-                  | dates = ( startDate
-                            , Time.millisToPosix
-                                ((Time.posixToMillis startDate) + newTimeRange))
-              }
-            , Cmd.none
-            )
+            let newZoom = Zoom.update zm model.zoom
+            in ( { model | zoom = newZoom }, Cmd.none )
 
 subscriptions model =
     Zoom.subscriptions model.zoom ZoomMsg

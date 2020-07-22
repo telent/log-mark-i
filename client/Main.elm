@@ -37,11 +37,20 @@ padding =
 
 type alias Measure = ( Time.Posix, Float )
 type MeasureName = Mass | FatMass | FatRatio
-type alias Series = { name: MeasureName, measures: List Measure  }
+type alias Series = { name: MeasureName
+                    , scale: ContinuousScale Float
+                    , measures: List Measure  }
 
 type alias Model = { series: List Series
                    , zoom: Zoom
                    , dates: (Time.Posix, Time.Posix)  }
+
+seriesOf : Model -> MeasureName -> Maybe Series
+seriesOf model name =
+    case List.filter (\s -> s.name == name) model.series of
+        [] -> Nothing
+        series :: [] -> Just series
+        series :: _ -> Nothing
 
 spy a =
     let _ = Debug.log "spy" a
@@ -77,16 +86,16 @@ xAxis model =
 
 yAxis : Model -> Svg msg
 yAxis model =
-    case model.series of
-        [] -> g [] []
-        series :: _ -> Axis.left [ Axis.tickCount 5 ] (yScale series.measures)
+    case seriesOf model Mass of
+        Nothing -> g [] []
+        Just series -> Axis.left [ Axis.tickCount 5 ] series.scale
 
-line : Model -> List Measure -> Path
-line model measures =
+line : Model -> Series -> Path
+line model series =
     let transformToLineData (x, y) =
-            Just ( Scale.convert (xScale model) x, Scale.convert (yScale measures) y )
+            Just ( Scale.convert (xScale model) x, Scale.convert series.scale y )
     in
-    List.map transformToLineData measures
+    List.map transformToLineData series.measures
         |> Shape.line Shape.monotoneInXCurve
 
 timeInterval later earlier =
@@ -113,8 +122,8 @@ viewSeries model series =
     let {name, measures} = series
     in
     g [ transform [ Translate padding padding ], class [ "series" ] ]
-        [ Path.element (line model measures) [ stroke <| Paint <| Color.rgb 1 0 0, strokeWidth 2, fill PaintNone ]
-        , Path.element (line model (smoothMeasures measures)) [ stroke <| Paint <| Color.rgb 0.4 0.9 0, strokeWidth 2, fill PaintNone ]
+        [ Path.element (line model series) [ stroke <| Paint <| Color.rgb 1 0 0, strokeWidth 2, fill PaintNone ]
+        , Path.element (line model { series | measures = (smoothMeasures measures)}) [ stroke <| Paint <| Color.rgb 0.4 0.9 0, strokeWidth 2, fill PaintNone ]
         ]
 
 view : Model -> Html Msg
@@ -185,9 +194,10 @@ parseDate possibleString =
         Err _ -> Time.millisToPosix 0
 
 newModelForJson model json =
-    let s = [ Series Mass (List.map
-                           (\m -> (parseDate m.date, m.mass))
-                           (List.reverse json)) ]
+    let measures = (List.map
+                        (\m -> (parseDate m.date, m.mass))
+                        (List.reverse json))
+        s = [ Series Mass (yScale measures) measures ]
     in { zoom = model.zoom
        , dates = model.dates
        , series = s

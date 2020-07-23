@@ -44,7 +44,8 @@ type alias Series = { name: MeasureName
 
 type alias Model = { series: List Series
                    , zoom: Zoom
-                   , dates: (Time.Posix, Time.Posix)  }
+                   , dates: (Time.Posix, Time.Posix)
+                   , smoothness: Float }
 
 seriesOf : Model -> MeasureName -> Maybe Series
 seriesOf model name =
@@ -123,9 +124,9 @@ line xscale yscale measures =
 timeInterval later earlier =
     Time.posixToMillis later - Time.posixToMillis earlier
 
-smoothMeasures : List Measure -> List Measure
-smoothMeasures measures =
-    let lambda = 0.1/86400000
+smoothMeasures : Float -> List Measure -> List Measure
+smoothMeasures factor measures =
+    let lambda = factor/86400000
         smoothMore (prev_t, prev_y) measures_ =
             case measures_ of
                 [] -> []
@@ -143,7 +144,7 @@ viewSeries : Model -> Series -> Svg Msg
 viewSeries model series =
     let {name, scale, measures} = series
         xscale = xScale model
-        smooth = smoothMeasures
+        smooth = smoothMeasures model.smoothness
     in
     g [ transform [ Translate padding padding ], class [ "series" ] ]
         [ Path.element (line xscale scale (smooth measures))
@@ -161,8 +162,9 @@ view model =
                    [ xAxis model ]
                , g [ transform [ Translate (padding - 1) padding ] ]
                    [ yAxis model ]] ++
-                   (List.map (viewSeries model) model.series))]
-
+                   (List.map (viewSeries model) model.series))
+        , button [ onClick SmoothMore ] [ text "smoother" ]
+        , button [ onClick SmoothLess ] [ text "rougher" ]]
 
 type alias MeasureJson =
     { date : String
@@ -198,16 +200,20 @@ type Msg
     = RefreshData
     | ZoomMsg OnZoom
     | DataReceived (Result Http.Error (List MeasureJson))
+    | SmoothMore
+    | SmoothLess
+
 
 init : () -> (Model, Cmd Msg)
 init _  =
     let z = Zoom.init { width = w-2*padding, height = h-2*padding }
         endDate = 1595189057000 + 15*86400*1000
-        startDate = endDate - (86400*1000*120)
+        startDate = endDate - (86400*1000*150)
         model = { zoom = z
                 , series = []
                 , dates = ( Time.millisToPosix startDate
                           , Time.millisToPosix endDate)
+                , smoothness = 0.1
                 }
     in (model, getData model)
 
@@ -237,6 +243,7 @@ newModelForJson model json =
     in { zoom = model.zoom
        , dates = model.dates
        , series = s
+       , smoothness = 0.1
        }
 
 
@@ -248,13 +255,15 @@ updateData model result =
             let _ = Debug.log "errir" httpError
             in (model, Cmd.none)
 
--- timeSeries = List.map (\x -> ((Time.millisToPosix (x*86400*500 + 1458928000000)),  toFloat (52 +(modBy 5 x)))) (List.range 1 100)
-
 update : Msg -> Model -> (Model, Cmd Msg )
 update msg model =
     case msg of
         RefreshData -> ( model, getData model)
         DataReceived result -> updateData model result
+        SmoothMore -> ( { model | smoothness = model.smoothness - 0.01 },
+                            Cmd.none)
+        SmoothLess -> ( { model | smoothness = model.smoothness + 0.01 },
+                            Cmd.none)
         ZoomMsg zm ->
             let newZoom = Zoom.update zm model.zoom
             in ( { model | zoom = newZoom }, Cmd.none )

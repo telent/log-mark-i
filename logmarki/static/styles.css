@@ -1,3 +1,8 @@
+.fat .tick text { fill: red; }
+.mass .tick text { fill: green; }
+
+// all of this is from the d3 impl
+
 .weightLine {
     fill: none;
     stroke: #ffab00;

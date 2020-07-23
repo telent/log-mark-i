@@ -3,7 +3,7 @@ module Main exposing (main)
 
 import Axis
 import Browser
-import Color
+import Color exposing (Color)
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import Http
@@ -39,6 +39,7 @@ type alias Measure = ( Time.Posix, Float )
 type MeasureName = Mass | FatMass | FatRatio
 type alias Series = { name: MeasureName
                     , scale: ContinuousScale Float
+                    , color: Color
                     , measures: List Measure  }
 
 type alias Model = { series: List Series
@@ -72,13 +73,26 @@ xScale : Model -> ContinuousScale Time.Posix
 xScale model =
     Scale.time Time.utc ( 0, w - 2 * padding ) (zoomedDates model)
 
-yScale : List Measure -> ContinuousScale Float
-yScale measures =
+-- we need a separate yscale for each mass measure, but they should
+-- differ in offset only, not in scale, so they're related.
+
+extentHeight : (Float, Float) ->  Float
+extentHeight (lower, upper) = upper - lower
+
+yExtent : List Measure -> (Float, Float)
+yExtent measures =
     let ys = List.map Tuple.second measures
-        top = List.foldl max 0 ys
-        bottom = List.foldl min top ys
-    in
-    Scale.linear ( h - 2 * padding, 0 ) ( bottom, top )
+        max = Maybe.withDefault 0 (List.maximum ys)
+        min = Maybe.withDefault max (List.minimum ys)
+    in (min, max)
+
+yScales massMeasures fatMassMeasures =
+    let massExtent = (yExtent massMeasures)
+        fatExtent = (yExtent fatMassMeasures)
+        height = max (extentHeight massExtent) (extentHeight fatExtent)
+        mkScale ex = Scale.linear ( h - 2 * padding, 0 )
+                  ( Tuple.first ex, height + Tuple.first ex) |> (Scale.nice 10)
+    in (mkScale massExtent, mkScale fatExtent)
 
 xAxis : Model -> Svg msg
 xAxis model =
@@ -86,16 +100,24 @@ xAxis model =
 
 yAxis : Model -> Svg msg
 yAxis model =
-    case seriesOf model Mass of
-        Nothing -> g [] []
-        Just series -> Axis.left [ Axis.tickCount 5 ] series.scale
+    g [] [ (case seriesOf model FatMass of
+                Nothing -> g [] []
+                Just series -> g [ class ["fat"]] [ Axis.right [ Axis.tickCount 5 ] series.scale])
+         , (case seriesOf model Mass of
+                Nothing -> g [] []
+                Just series -> g [ class ["mass"]] [ Axis.left [ Axis.tickCount 5 ] series.scale])
+         ]
 
-line : Model -> Series -> Path
-line model series =
+line : ContinuousScale Time.Posix ->
+       ContinuousScale Float ->
+       List Measure ->
+       Path
+
+line xscale yscale measures =
     let transformToLineData (x, y) =
-            Just ( Scale.convert (xScale model) x, Scale.convert series.scale y )
+            Just ( Scale.convert xscale x, Scale.convert yscale y )
     in
-    List.map transformToLineData series.measures
+    List.map transformToLineData measures
         |> Shape.line Shape.monotoneInXCurve
 
 timeInterval later earlier =
@@ -103,7 +125,7 @@ timeInterval later earlier =
 
 smoothMeasures : List Measure -> List Measure
 smoothMeasures measures =
-    let lambda = 0.10/86400000
+    let lambda = 0.1/86400000
         smoothMore (prev_t, prev_y) measures_ =
             case measures_ of
                 [] -> []
@@ -119,11 +141,13 @@ smoothMeasures measures =
 
 viewSeries : Model -> Series -> Svg Msg
 viewSeries model series =
-    let {name, measures} = series
+    let {name, scale, measures} = series
+        xscale = xScale model
+        smooth = smoothMeasures
     in
     g [ transform [ Translate padding padding ], class [ "series" ] ]
-        [ Path.element (line model series) [ stroke <| Paint <| Color.rgb 1 0 0, strokeWidth 2, fill PaintNone ]
-        , Path.element (line model { series | measures = (smoothMeasures measures)}) [ stroke <| Paint <| Color.rgb 0.4 0.9 0, strokeWidth 2, fill PaintNone ]
+        [ Path.element (line xscale scale (smooth measures))
+              [ stroke <| Paint <| series.color, strokeWidth 2, fill PaintNone ]
         ]
 
 view : Model -> Html Msg
@@ -194,10 +218,23 @@ parseDate possibleString =
         Err _ -> Time.millisToPosix 0
 
 newModelForJson model json =
-    let measures = (List.map
-                        (\m -> (parseDate m.date, m.mass))
-                        (List.reverse json))
-        s = [ Series Mass (yScale measures) measures ]
+    let massMeasures =
+            List.map (\m -> (parseDate m.date, m.mass)) json
+        fatMassMeasures =
+            List.filterMap (\{date, fatMass} ->
+                                case fatMass of
+                                    Just m -> Just ((parseDate date), m)
+                                    Nothing -> Nothing)
+                json
+        (massScale, fatScale) = yScales massMeasures fatMassMeasures
+        s = [ Series Mass
+                  massScale
+                  (Color.rgb 0.4 0.9 0)
+                  massMeasures,
+              Series FatMass
+                  fatScale
+                  (Color.rgb 1 0 0)
+                  fatMassMeasures]
     in { zoom = model.zoom
        , dates = model.dates
        , series = s
@@ -207,7 +244,7 @@ newModelForJson model json =
 updateData model result =
     case result of
         Ok json ->
-            (newModelForJson model json, Cmd.none)
+            (newModelForJson model (List.reverse json), Cmd.none)
         Err httpError ->
             let _ = Debug.log "errir" httpError
             in (model, Cmd.none)

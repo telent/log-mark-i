@@ -12,6 +12,7 @@ import Json.Decode as JD exposing (field, Decoder, int, string)
 import Path exposing (Path)
 import Scale exposing (ContinuousScale)
 import Shape
+import Task
 import Time
 import TypedSvg exposing (g, svg)
 import TypedSvg.Attributes exposing (class, fill, stroke, transform, viewBox)
@@ -196,8 +197,14 @@ getData model =
         , expect = Http.expectJson DataReceived dataDecoder
         }
 
+timeBefore time seconds =
+    Time.millisToPosix ((Time.posixToMillis time) - 1000 * seconds)
+
+getNow = Time.now |> Task.perform SetNow
+
 type Msg
     = RefreshData
+    | SetNow Time.Posix
     | ZoomMsg OnZoom
     | DataReceived (Result Http.Error (List MeasureJson))
     | SmoothMore
@@ -207,15 +214,12 @@ type Msg
 init : () -> (Model, Cmd Msg)
 init _  =
     let z = Zoom.init { width = w-2*padding, height = h-2*padding }
-        endDate = 1595189057000 + 15*86400*1000
-        startDate = endDate - (86400*1000*150)
         model = { zoom = z
                 , series = []
-                , dates = ( Time.millisToPosix startDate
-                          , Time.millisToPosix endDate)
+                , dates = ( Time.millisToPosix 0 , Time.millisToPosix 0)
                 , smoothness = 0.1
                 }
-    in (model, getData model)
+    in (model, getNow)
 
 parseDate possibleString =
     case (Iso8601.toTime possibleString) of
@@ -264,9 +268,12 @@ update msg model =
                             Cmd.none)
         SmoothLess -> ( { model | smoothness = model.smoothness + 0.01 },
                             Cmd.none)
+        SetNow time -> let newModel = { model | dates = spy (timeBefore time (86400*60), time) }
+                       in (newModel, getData newModel)
         ZoomMsg zm ->
             let newZoom = Zoom.update zm model.zoom
             in ( { model | zoom = newZoom }, Cmd.none )
+
 
 subscriptions model =
     Zoom.subscriptions model.zoom ZoomMsg

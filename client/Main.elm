@@ -156,13 +156,12 @@ view model =
                 ] ++ (Zoom.events model.zoom ZoomMsg)
     in
     div []
-        [ div []
-              [ svg attrs
-                    ([ g [ transform [ Translate (padding - 1) (h - padding) ] ]
-                          [ xAxis model ]
-                     , g [ transform [ Translate (padding - 1) padding ] ]
-                        [ yAxis model ]] ++
-                     (List.map (viewSeries model) model.series))]]
+        [ svg attrs
+              ([ g [ transform [ Translate (padding - 1) (h - padding) ] ]
+                   [ xAxis model ]
+               , g [ transform [ Translate (padding - 1) padding ] ]
+                   [ yAxis model ]] ++
+                   (List.map (viewSeries model) model.series))]
 
 
 type alias MeasureJson =

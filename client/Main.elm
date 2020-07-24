@@ -15,10 +15,10 @@ import Shape
 import Task
 import Time
 import TypedSvg exposing (g, svg)
-import TypedSvg.Attributes exposing (class, fill, stroke, transform, viewBox)
+import TypedSvg.Attributes as TSA exposing (class, fill, stroke, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (strokeWidth)
 import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types exposing (Paint(..), Transform(..))
+import TypedSvg.Types exposing (Paint(..), Transform(..), px)
 import Url.Builder as UB
 import Zoom exposing (OnZoom, Zoom)
 
@@ -122,6 +122,21 @@ line xscale yscale measures =
     List.map transformToLineData measures
         |> Shape.line Shape.monotoneInXCurve
 
+points xscale yscale color measures =
+    let transformToLineData (x, y) =
+            ( Scale.convert xscale x, Scale.convert yscale y )
+    in
+        List.map (\m ->
+                      let (x, y) = transformToLineData m
+                      in TypedSvg.rect [ TSA.x (px  (x-2))
+                                       , TSA.y (px (y-2))
+                                       , TSA.width (px 4)
+                                       , TSA.height (px 4)
+                                       , TSA.rx (px 1)
+                                       , TSA.ry (px 1)
+                                       , fill <| Paint color] [] )
+            measures
+
 timeInterval later earlier =
     Time.posixToMillis later - Time.posixToMillis earlier
 
@@ -143,13 +158,14 @@ smoothMeasures factor measures =
 
 viewSeries : Model -> Series -> Svg Msg
 viewSeries model series =
-    let {name, scale, measures} = series
+    let {name, scale, measures, color} = series
         xscale = xScale model
         smooth = smoothMeasures model.smoothness
     in
     g [ transform [ Translate padding padding ], class [ "series" ] ]
-        [ Path.element (line xscale scale (smooth measures))
-              [ stroke <| Paint <| series.color, strokeWidth 2, fill PaintNone ]
+        [ g [] (points xscale scale color measures)
+        , Path.element (line xscale scale (smooth measures))
+              [ stroke <| Paint <| color, strokeWidth 2, fill PaintNone ]
         ]
 
 view : Model -> Html Msg

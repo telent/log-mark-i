@@ -15,7 +15,7 @@ import Shape
 import Task
 import Time
 import TypedSvg exposing (g, svg)
-import TypedSvg.Attributes as TSA exposing (class, fill, stroke, transform, viewBox)
+import TypedSvg.Attributes as SvgA exposing (class, fill, stroke, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (strokeWidth)
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (Paint(..), Transform(..), px)
@@ -128,12 +128,12 @@ points xscale yscale color measures =
     in
         List.map (\m ->
                       let (x, y) = transformToLineData m
-                      in TypedSvg.rect [ TSA.x (px  (x-2))
-                                       , TSA.y (px (y-2))
-                                       , TSA.width (px 4)
-                                       , TSA.height (px 4)
-                                       , TSA.rx (px 1)
-                                       , TSA.ry (px 1)
+                      in TypedSvg.rect [ SvgA.x (px  (x-2))
+                                       , SvgA.y (px (y-2))
+                                       , SvgA.width (px 4)
+                                       , SvgA.height (px 4)
+                                       , SvgA.rx (px 1)
+                                       , SvgA.ry (px 1)
                                        , fill <| Paint color] [] )
             measures
 

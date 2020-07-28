@@ -84,9 +84,12 @@ spy a =
 
 visibleDates model =
     let scale = (Zoom.asRecord model.zoom).scale
+        pixels = w - 2 * padding
         (startDate, endDate) = model.initialDates
-        startT = Time.posixToMillis startDate
-        endT = Time.posixToMillis endDate
+        swipe = ((Zoom.asRecord model.zoom).translate.x / pixels *
+                 toFloat (timeInterval endDate startDate)) / scale
+        startT = Time.posixToMillis startDate - (round swipe)
+        endT = Time.posixToMillis endDate - (round swipe)
         midT = toFloat (startT + endT)/2
         newTimeRange = toFloat (endT - startT)/scale
     in
@@ -336,15 +339,15 @@ update msg model =
     case msg of
         RefreshData -> ( model , getData model)
         DataReceived result -> updateData model result
-        SmoothMore -> ( { model | smoothness = model.smoothness - 0.01 },
-                            Cmd.none)
-        SmoothLess -> ( { model | smoothness = model.smoothness + 0.01 },
-                            Cmd.none)
+        SmoothMore -> ( { model | smoothness = model.smoothness - 0.01 }
+                      , Cmd.none)
+        SmoothLess -> ( { model | smoothness = model.smoothness + 0.01 }
+                      , Cmd.none)
         SetNow time ->
             let newModel =
                     { model
                         | initialDates = (timeBefore time (86400*60), time) }
-            in (newModel, getData newModel)
+            in refreshIfNeeded newModel time
         Tick time -> refreshIfNeeded model time
         ZoomMsg zm ->
             let newZoom = Zoom.update zm model.zoom

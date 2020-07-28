@@ -42,11 +42,16 @@ type alias Series = { name: MeasureName
                     , scale: ContinuousScale Float
                     , color: Color
                     , measures: List Measure  }
+type PendingRequest = None | Started Time.Posix
 
 type alias Model = { series: List Series
                    , zoom: Zoom
                    , dates: (Time.Posix, Time.Posix)
+                   , initialDates: (Time.Posix, Time.Posix)
+                   , pendingRequest: PendingRequest
                    , smoothness: Float }
+
+
 
 seriesOf : Model -> MeasureName -> Maybe Series
 seriesOf model name =
@@ -59,9 +64,27 @@ spy a =
     let _ = Debug.log "spy" a
     in a
 
-zoomedDates model =
+-- we have different sets of start/end
+--  - the model dates
+--  - the visible dates
+-- if the visible dates are outside the range of the model dates,
+--  we need to fetch new data and update the model dates.
+
+-- The visible dates are a function of the initial visible dates and the zoom.
+--  Unless we want to reset the zoom level every time we load data, we
+--  cannot treat initial visible dates and model dates as the same thing
+
+-- having observed that we need to fetch data, we should store
+-- somewhere that we've asked for more, so that we don't ask for it
+-- again 60 times a second until it arrives. Ideally we do this without
+-- clobbering the model dates, so that in future we can get elaborate
+-- about merging new and existing data. Also store the request timestamp
+-- so that we can signal error/retry later if no reply
+
+
+visibleDates model =
     let scale = (Zoom.asRecord model.zoom).scale
-        (startDate, endDate) = model.dates
+        (startDate, endDate) = model.initialDates
         startT = Time.posixToMillis startDate
         endT = Time.posixToMillis endDate
         midT = toFloat (startT + endT)/2
@@ -73,7 +96,7 @@ zoomedDates model =
 
 xScale : Model -> ContinuousScale Time.Posix
 xScale model =
-    Scale.time Time.utc ( 0, w - 2 * padding ) (zoomedDates model)
+    Scale.time Time.utc ( 0, w - 2 * padding ) (visibleDates model)
 
 -- we need a separate yscale for each mass measure, but they should
 -- differ in offset only, not in scale, so they're related.
@@ -140,6 +163,15 @@ points xscale yscale color measures =
 timeInterval later earlier =
     Time.posixToMillis later - Time.posixToMillis earlier
 
+timeBefore time seconds =
+    Time.millisToPosix ((Time.posixToMillis time) - 1000 * seconds)
+
+intervalWithin (start1, end1) (start2, end2) =
+    let earlier a b =  (Time.posixToMillis a) <= (Time.posixToMillis b)
+        later a b = earlier b a
+    in (later start1 start2) && (earlier end1 end2)
+
+
 smoothMeasures : Float -> List Measure -> List Measure
 smoothMeasures factor measures =
     let lambda = factor/86400000
@@ -158,8 +190,11 @@ smoothMeasures factor measures =
 
 viewSeries : Model -> Series -> Svg Msg
 viewSeries model series =
-    let {name, scale, measures, color} = series
+    let {name, scale, color} = series
         xscale = xScale model
+        measures = List.filter
+                   (\(t, _) -> intervalWithin (t,t) (visibleDates model))
+                   series.measures
         smooth = smoothMeasures model.smoothness
     in
     g [ transform [ Translate padding padding ], class [ "series" ] ]
@@ -168,13 +203,19 @@ viewSeries model series =
               [ stroke <| Paint <| color, strokeWidth 2, fill PaintNone ]
         ]
 
+viewPending pending =
+    case pending of
+        None -> div [] [text "Ready"]
+        Started ts -> div [] [text "Refreshing"]
+
 view : Model -> Html Msg
 view model =
     let attrs = [ viewBox 0 0 w h
                 ] ++ (Zoom.events model.zoom ZoomMsg)
     in
     div []
-        [ svg attrs
+        [ viewPending model.pendingRequest
+        , svg attrs
               ([ g [ transform [ Translate (padding - 1) (h - padding) ] ]
                    [ xAxis model ]
                , g [ transform [ Translate (padding - 1) padding ] ]
@@ -213,8 +254,6 @@ getData model =
         , expect = Http.expectJson DataReceived dataDecoder
         }
 
-timeBefore time seconds =
-    Time.millisToPosix ((Time.posixToMillis time) - 1000 * seconds)
 
 getNow = Time.now |> Task.perform SetNow
 
@@ -225,6 +264,7 @@ type Msg
     | DataReceived (Result Http.Error (List MeasureJson))
     | SmoothMore
     | SmoothLess
+    | Tick Time.Posix
 
 
 init : () -> (Model, Cmd Msg)
@@ -232,7 +272,9 @@ init _  =
     let z = Zoom.init { width = w-2*padding, height = h-2*padding }
         model = { zoom = z
                 , series = []
+                , initialDates = ( Time.millisToPosix 0 , Time.millisToPosix 0)
                 , dates = ( Time.millisToPosix 0 , Time.millisToPosix 0)
+                , pendingRequest = None
                 , smoothness = 0.1
                 }
     in (model, getNow)
@@ -262,7 +304,9 @@ newModelForJson model json =
                   fatMassMeasures]
     in { zoom = model.zoom
        , dates = model.dates
+       , initialDates = model.initialDates
        , series = s
+       , pendingRequest = None
        , smoothness = 0.1
        }
 
@@ -275,24 +319,41 @@ updateData model result =
             let _ = Debug.log "errir" httpError
             in (model, Cmd.none)
 
+
+refreshIfNeeded model ts =
+    if  intervalWithin (visibleDates model) model.dates
+        && model.pendingRequest == None
+    then
+        ( model, Cmd.none )
+    else
+        let model1 = { model
+                        | pendingRequest = Started ts
+                        ,  dates = (visibleDates model) }
+        in (model1, getData model1)
+
 update : Msg -> Model -> (Model, Cmd Msg )
 update msg model =
     case msg of
-        RefreshData -> ( model, getData model)
+        RefreshData -> ( model , getData model)
         DataReceived result -> updateData model result
         SmoothMore -> ( { model | smoothness = model.smoothness - 0.01 },
                             Cmd.none)
         SmoothLess -> ( { model | smoothness = model.smoothness + 0.01 },
                             Cmd.none)
-        SetNow time -> let newModel = { model | dates = spy (timeBefore time (86400*60), time) }
-                       in (newModel, getData newModel)
+        SetNow time ->
+            let newModel =
+                    { model
+                        | initialDates = (timeBefore time (86400*60), time) }
+            in (newModel, getData newModel)
+        Tick time -> refreshIfNeeded model time
         ZoomMsg zm ->
             let newZoom = Zoom.update zm model.zoom
             in ( { model | zoom = newZoom }, Cmd.none )
 
 
 subscriptions model =
-    Zoom.subscriptions model.zoom ZoomMsg
+    Sub.batch [ Zoom.subscriptions model.zoom ZoomMsg
+              , Time.every 500 Tick]
 
 main =
     Browser.element

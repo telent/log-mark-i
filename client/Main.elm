@@ -133,7 +133,12 @@ yAxis model =
                 Just series -> g [ class ["fat"]] [ Axis.right [ Axis.tickCount 5 ] series.scale])
          , (case seriesOf model Mass of
                 Nothing -> g [] []
-                Just series -> g [ class ["mass"]] [ Axis.left [ Axis.tickCount 5 ] series.scale])
+                Just series ->
+                    g [ class ["mass"]]
+                        [ Axis.left [ Axis.tickCount 5 ] series.scale
+                        , g [transform [ Translate (w - 2* padding) 0 ]]
+                            [Axis.right [ Axis.tickCount 5 ] series.scale]
+                        ])
          ]
 
 line : ContinuousScale Time.Posix ->

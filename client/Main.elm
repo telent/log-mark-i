@@ -5,6 +5,8 @@ import Axis
 import Browser
 import Color exposing (Color)
 import DateFormat
+import FormatNumber
+import FormatNumber.Locales exposing (Decimals(..), usLocale)
 import Html exposing (Html, button, div, text)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
@@ -260,18 +262,18 @@ formatDateTime time =
                         , DateFormat.text " "
                         , DateFormat.dayOfMonthNumber]
         timeFormatter = DateFormat.format
-                        [ DateFormat.hourNumber
+                        [ DateFormat.hourMilitaryFixed
                         , DateFormat.text ":"
-                        , DateFormat.minuteNumber
+                        , DateFormat.minuteFixed
                         , DateFormat.text ":"
-                        , DateFormat.secondNumber]
+                        , DateFormat.secondFixed]
     in ( dateFormatter localTZ time
        , timeFormatter localTZ time)
 
 viewPlayhead model =
     let (date, measures) = latestMeasures model (spy model.playhead)
         px = TypedSvg.Types.px
-        kg m = (String.fromFloat m) ++ "kg"
+        kg m = (FormatNumber.format {usLocale | decimals = Exact 2 } m) ++ "kg"
         boxWidth = 108
         lineHeight = 17.0
         paint = Paint (Color.rgb 0.5 0.6 1.0)
@@ -320,7 +322,9 @@ view model =
                    [ yAxis model ]] ++
                    (List.map (viewSeries model) model.series))
         , button [ onClick SmoothMore ] [ text "smoother" ]
-        , button [ onClick SmoothLess ] [ text "rougher" ]]
+        , button [ onClick SmoothLess ] [ text "rougher" ]
+        , button [ onClick Rewind ] [ text "<<" ]
+        , button [ onClick Forward ] [ text ">>" ]        ]
 
 type alias MeasureJson =
     { date : String
@@ -362,6 +366,8 @@ type Msg
     | DataReceived (Result Http.Error (List MeasureJson))
     | SmoothMore
     | SmoothLess
+    | Rewind
+    | Forward
     | Tick Time.Posix
 
 
@@ -436,6 +442,12 @@ update msg model =
     case msg of
         RefreshData -> ( model , getData model)
         DataReceived result -> updateData model result
+        Rewind ->
+            let (date, _) = latestMeasures model (timeBefore model.playhead 1)
+            in ( { model | playhead = date} , Cmd.none)
+        Forward ->
+            ( { model | playhead = timeBefore model.playhead -86400}
+            , Cmd.none)
         SmoothMore -> ( { model | smoothness = model.smoothness - 0.01 }
                       , Cmd.none)
         SmoothLess -> ( { model | smoothness = model.smoothness + 0.01 }

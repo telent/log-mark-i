@@ -4,7 +4,9 @@ module Main exposing (main)
 import Axis
 import Browser
 import Color exposing (Color)
+import DateFormat
 import Html exposing (Html, button, div, text)
+import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import Http
 import Iso8601
@@ -14,7 +16,7 @@ import Scale exposing (ContinuousScale)
 import Shape
 import Task
 import Time
-import TypedSvg exposing (g, svg)
+import TypedSvg exposing (g, svg, rect, text_)
 import TypedSvg.Attributes as SvgA exposing (class, fill, stroke, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (strokeWidth)
 import TypedSvg.Core exposing (Svg)
@@ -49,7 +51,9 @@ type alias Model = { series: List Series
                    , dates: (Time.Posix, Time.Posix)
                    , initialDates: (Time.Posix, Time.Posix)
                    , pendingRequest: PendingRequest
-                   , smoothness: Float }
+                   , smoothness: Float
+                   , playhead: Time.Posix
+                   }
 
 
 
@@ -141,6 +145,35 @@ yAxis model =
                         ])
          ]
 
+epochZero = Time.millisToPosix 0
+localTZ = Time.utc
+
+latestMeasure measures date =
+    case measures of
+        [] -> (date, 0)
+        measure :: [] -> measure
+        measure :: (nextDate, nextV) :: more ->
+            if isLater nextDate date then measure
+            else latestMeasure ((nextDate, nextV) :: more) date
+
+latestMeasures model date =
+    let masses = seriesOf model Mass
+        fats = seriesOf model FatMass
+        (lastMassTime, lastMass) =
+            case masses of
+                Nothing -> (epochZero, 0)
+                Just series -> latestMeasure series.measures date
+        (lastFatTime, lastFat) =
+            case fats of
+                Nothing -> (epochZero, 0)
+                Just series -> latestMeasure series.measures date
+    in if lastMassTime == lastFatTime then
+           (lastMassTime, [lastMass, lastFat])
+       else if isLater lastMassTime lastFatTime then
+                (lastMassTime, [lastMass])
+            else
+                (lastFatTime, [lastFat])
+
 line : ContinuousScale Time.Posix ->
        ContinuousScale Float ->
        List Measure ->
@@ -168,6 +201,10 @@ points xscale yscale color measures =
                                        , fill <| Paint color] [] )
             measures
 
+isEarlier a b =  (Time.posixToMillis a) < (Time.posixToMillis b)
+isLater a b =  (Time.posixToMillis a) > (Time.posixToMillis b)
+notLater a b =  not (isLater a b)
+
 timeInterval later earlier =
     Time.posixToMillis later - Time.posixToMillis earlier
 
@@ -175,9 +212,8 @@ timeBefore time seconds =
     Time.millisToPosix ((Time.posixToMillis time) - 1000 * seconds)
 
 intervalWithin (start1, end1) (start2, end2) =
-    let earlier a b =  (Time.posixToMillis a) <= (Time.posixToMillis b)
-        later a b = earlier b a
-    in (later start1 start2) && (earlier end1 end2)
+    let notEarlier a b = notLater b a
+    in (notEarlier start1 start2) && (notLater end1 end2)
 
 
 smoothMeasures : Float -> List Measure -> List Measure
@@ -186,7 +222,7 @@ smoothMeasures factor measures =
         smoothMore (prev_t, prev_y) measures_ =
             case measures_ of
                 [] -> []
-                m1 :: [] -> [m1]
+                m1 :: [] -> []
                 (t, y) :: ms ->
                     let m = e ^ (-lambda * (toFloat (timeInterval t prev_t)))
                         newSmooth = (t, (1.0-m) * y + m * prev_y)
@@ -216,6 +252,59 @@ viewPending pending =
         None -> div [] [text "Ready"]
         Started ts -> div [] [text "Refreshing"]
 
+formatDateTime time =
+    let dateFormatter = DateFormat.format
+                        [ DateFormat.dayOfWeekNameAbbreviated
+                        , DateFormat.text ", "
+                        , DateFormat.monthNameFull
+                        , DateFormat.text " "
+                        , DateFormat.dayOfMonthNumber]
+        timeFormatter = DateFormat.format
+                        [ DateFormat.hourNumber
+                        , DateFormat.text ":"
+                        , DateFormat.minuteNumber
+                        , DateFormat.text ":"
+                        , DateFormat.secondNumber]
+    in ( dateFormatter localTZ time
+       , timeFormatter localTZ time)
+
+viewPlayhead model =
+    let (date, measures) = latestMeasures model (spy model.playhead)
+        px = TypedSvg.Types.px
+        kg m = (String.fromFloat m) ++ "kg"
+        boxWidth = 108
+        lineHeight = 17.0
+        paint = Paint (Color.rgb 0.5 0.6 1.0)
+        boxHeight = 70.0+ lineHeight * toFloat (List.length measures)
+        x = (Scale.convert (xScale model) date) - boxWidth + padding
+        centreX = SvgA.x (px (boxWidth/2))
+        box = rect [ SvgA.width (px boxWidth)
+                   , SvgA.height (px boxHeight)
+                   , fill paint] []
+        (dateString, timeString) = formatDateTime date
+        at y = [ SvgA.y (px y)
+                 , centreX
+                 , SvgA.textAnchor TypedSvg.Types.AnchorMiddle]
+    in
+    g [ transform [ Translate x 0 ]
+      , class ["playhead" ]]
+      ([ box
+       , TypedSvg.line [ SvgA.x1 (px boxWidth)
+                       , SvgA.y1 (px 0)
+                       , SvgA.x2 (px boxWidth)
+                       , SvgA.y2 (px (h -  padding))
+                       , stroke paint]
+                       []
+       , text_ (at lineHeight) [ TypedSvg.Core.text dateString]
+       , text_ (at (2*lineHeight)) [ TypedSvg.Core.text timeString]
+       ] ++
+           List.indexedMap
+               (\y value ->
+                    text_ (at (((toFloat y)+3.5)*lineHeight))
+                    [ TypedSvg.Core.text (kg value) ])
+               measures)
+
+
 view : Model -> Html Msg
 view model =
     let attrs = [ viewBox 0 0 w h
@@ -224,7 +313,8 @@ view model =
     div []
         [ viewPending model.pendingRequest
         , svg attrs
-              ([ g [ transform [ Translate (padding - 1) (h - padding) ] ]
+              ([ viewPlayhead model
+               , g [ transform [ Translate (padding - 1) (h - padding) ] ]
                    [ xAxis model ]
                , g [ transform [ Translate (padding - 1) padding ] ]
                    [ yAxis model ]] ++
@@ -284,6 +374,7 @@ init _  =
                 , dates = ( Time.millisToPosix 0 , Time.millisToPosix 0)
                 , pendingRequest = None
                 , smoothness = 0.1
+                , playhead = Time.millisToPosix 0
                 }
     in (model, getNow)
 
@@ -316,6 +407,7 @@ newModelForJson model json =
        , series = s
        , pendingRequest = None
        , smoothness = 0.1
+       , playhead = model.playhead
        }
 
 
@@ -351,7 +443,8 @@ update msg model =
         SetNow time ->
             let newModel =
                     { model
-                        | initialDates = (timeBefore time (86400*60), time) }
+                        | initialDates = (timeBefore time (86400*60), time)
+                        , playhead = time }
             in refreshIfNeeded newModel time
         Tick time -> refreshIfNeeded model time
         ZoomMsg zm ->

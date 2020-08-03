@@ -17,7 +17,8 @@
             "elm-community/typed-svg": "6.0.0",
             "folkertdev/one-true-path-experiment": "4.0.3",
             "gampleman/elm-visualization": "2.1.1",
-            "rtfeldman/elm-iso8601-date-strings": "1.1.3"
+            "rtfeldman/elm-iso8601-date-strings": "1.1.3",
+            "ryannhg/date-format": "2.3.0"
         },
         "indirect": {
             "elm/bytes": "1.0.8",
@@ -33,8 +34,7 @@
             "ianmackenzie/elm-interval": "1.0.1",
             "ianmackenzie/elm-triangular-mesh": "1.0.4",
             "justinmimbs/date": "3.2.1",
-            "justinmimbs/time-extra": "1.1.0",
-            "ryannhg/date-format": "2.3.0"
+            "justinmimbs/time-extra": "1.1.0"
         }
     },
     "test-dependencies": {

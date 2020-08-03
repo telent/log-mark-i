@@ -1,7 +1,29 @@
 .fat .tick text { fill: red; }
 .mass .tick text { fill: green; }
 
-// all of this is from the d3 impl
+.playhead {
+    position: absolute;
+    top: 1em;
+    width: 10em;
+    height: 6em;
+    max-height: 40%;
+    background-color: #ccf;
+    opacity: 0.6;
+    padding: 1em;
+    border-width: 1px;
+    border-radius: 8px;
+    border-color: #000;
+    border-style: solid;
+    font-size: 12px;
+}
+.playhead .date {
+    font-size: 140%;
+}
+.playhead .measure {
+    font-size: 120%;
+}
+
+/*  all of this is from the d3 impl  */
 
 .weightLine {
     fill: none;

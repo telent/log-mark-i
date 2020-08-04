@@ -22,6 +22,7 @@ import TypedSvg exposing (g, svg, rect, text_)
 import TypedSvg.Attributes as SvgA exposing (class, fill, stroke, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (strokeWidth)
 import TypedSvg.Core exposing (Svg)
+import TypedSvg.Events
 import TypedSvg.Types exposing (Paint(..), Transform(..), px)
 import Url.Builder as UB
 import Zoom exposing (OnZoom, Zoom)
@@ -277,6 +278,7 @@ viewPlayhead model =
         boxWidth = 108
         lineHeight = 17.0
         paint = Paint (Color.rgb 0.5 0.6 1.0)
+        darkPaint = Paint (Color.rgb 0.4 0.5 0.9)
         boxHeight = 70.0+ lineHeight * toFloat (List.length measures)
         x = (Scale.convert (xScale model) date) - boxWidth + padding
         centreX = SvgA.x (px (boxWidth/2))
@@ -297,6 +299,20 @@ viewPlayhead model =
                        , SvgA.y2 (px (h -  padding))
                        , stroke paint]
                        []
+       , g [ transform [ Translate 0 25 ] ]
+           [ TypedSvg.circle [ SvgA.r (px 13)
+                             , fill darkPaint
+                             , TypedSvg.Events.onClick Rewind] []
+           , text_ [ SvgA.y (px 4)
+                   , SvgA.x (px -6)
+                   ] [ TypedSvg.Core.text " ‹‹" ]]
+       , g [ transform [ Translate boxWidth 25 ] ]
+           [ TypedSvg.circle [ SvgA.r (px 13)
+                             , fill darkPaint
+                             , TypedSvg.Events.onClick Forward] []
+           , text_ [ SvgA.y (px 4)
+                   , SvgA.x (px -3)
+                   ] [ TypedSvg.Core.text "››" ]]
        , text_ (at lineHeight) [ TypedSvg.Core.text dateString]
        , text_ (at (2*lineHeight)) [ TypedSvg.Core.text timeString]
        ] ++

@@ -392,18 +392,22 @@ init _  =
     let z = Zoom.init { width = w-2*padding, height = h-2*padding }
         model = { zoom = z
                 , series = []
-                , initialDates = ( Time.millisToPosix 0 , Time.millisToPosix 0)
-                , dates = ( Time.millisToPosix 0 , Time.millisToPosix 0)
+                , initialDates = ( epochZero , epochZero)
+                , dates = ( epochZero , epochZero)
                 , pendingRequest = None
                 , smoothness = 0.1
-                , playhead = Time.millisToPosix 0
+                , playhead = epochZero
                 }
     in (model, getNow)
 
 parseDate possibleString =
     case (Iso8601.toTime possibleString) of
         Ok val -> val
-        Err _ -> Time.millisToPosix 0
+        Err _ -> epochZero
+
+-- we need to calculate yscale on zoom not just on load, because it
+-- will change when a zoom-in excludes the extreme values from the
+-- visible range
 
 newModelForJson model json =
     let massMeasures =

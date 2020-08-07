@@ -3,6 +3,7 @@ module Main exposing (main)
 
 import Axis
 import Browser
+import Browser.Events
 import Color exposing (Color)
 import DateFormat
 import FormatNumber
@@ -25,6 +26,7 @@ import TypedSvg.Core exposing (Svg)
 import TypedSvg.Events
 import TypedSvg.Types exposing (Paint(..), Transform(..), px)
 import Url.Builder as UB
+import VirtualDom
 import Zoom exposing (OnZoom, Zoom)
 
 w : Float
@@ -271,6 +273,8 @@ formatDateTime time =
     in ( dateFormatter localTZ time
        , timeFormatter localTZ time)
 
+mousedecode  = JD.map Scrub (field "offsetX" int)
+
 viewPlayhead model =
     let (date, measures) = latestMeasures model model.playhead
         px = TypedSvg.Types.px
@@ -282,9 +286,11 @@ viewPlayhead model =
         boxHeight = 70.0+ lineHeight * toFloat (List.length measures)
         x = (Scale.convert (xScale model) date) - boxWidth + padding
         centreX = SvgA.x (px (boxWidth/2))
+        onMouseThing = TypedSvg.Events.on "mousedown" (VirtualDom.Normal mousedecode)
         box = rect [ SvgA.width (px boxWidth)
                    , SvgA.height (px boxHeight)
-                   , fill paint] []
+                   , fill paint
+                   , onMouseThing ] []
         (dateString, timeString) = formatDateTime date
         at y = [ SvgA.y (px y)
                  , centreX
@@ -384,6 +390,7 @@ type Msg
     | SmoothLess
     | Rewind
     | Forward
+    | Scrub Int
     | Tick Time.Posix
 
 
@@ -457,6 +464,10 @@ refreshIfNeeded model ts =
                         ,  dates = (visibleDates model) }
         in (model1, getData model1)
 
+scrub e model =
+    let _ = (spy e)
+    in model
+
 update : Msg -> Model -> (Model, Cmd Msg )
 update msg model =
     case msg of
@@ -472,6 +483,7 @@ update msg model =
                       , Cmd.none)
         SmoothLess -> ( { model | smoothness = model.smoothness + 0.01 }
                       , Cmd.none)
+        Scrub evt -> ( scrub evt model, Cmd.none )
         SetNow time ->
             let newModel =
                     { model

@@ -272,7 +272,7 @@ formatDateTime time =
        , timeFormatter localTZ time)
 
 viewPlayhead model =
-    let (date, measures) = latestMeasures model (spy model.playhead)
+    let (date, measures) = latestMeasures model model.playhead
         px = TypedSvg.Types.px
         kg m = (FormatNumber.format {usLocale | decimals = Exact 2 } m) ++ "kg"
         boxWidth = 108
